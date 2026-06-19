@@ -158,6 +158,12 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 .norm-input:focus{border-color:var(--accent);}
 .norm-unit{font-size:11px;color:var(--muted);width:60px;}
 
+
+.photo-thumb-lg{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:1px solid var(--border);cursor:pointer;transition:opacity .15s;}
+.photo-thumb-lg:hover{opacity:.85;}
+.photo-fullscreen{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:500;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.photo-fullscreen img{max-width:95vw;max-height:95vh;border-radius:8px;}
+
 /* MODAL */
 .overlay{display:none;position:fixed;inset:0;background:rgba(15,30,50,.55);z-index:200;align-items:center;justify-content:center;padding:16px;}
 .overlay.open{display:flex;}
@@ -463,6 +469,25 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('normsModal')">Uždaryti</button>
       <button class="btn btn-primary" style="flex:2" onclick="saveNorms()">Išsaugoti</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOG DETAIL MODAL -->
+<div class="overlay" id="logDetailModal">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-hd" id="ldTitle">Įrašo detalės</div>
+    <div id="ldWorkerInfo" style="display:flex;align-items:center;gap:12px;background:var(--panel2);border-radius:10px;padding:12px 14px;margin-bottom:16px;"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;" id="ldStats"></div>
+    <div id="ldNotes" style="display:none;background:var(--panel2);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:13px;"></div>
+    <div id="ldPhotos" style="display:none">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">📷 Nuotraukos</div>
+      <div id="ldPhotoGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;"></div>
+    </div>
+    <div id="ldNoPhotos" style="display:none;text-align:center;padding:20px;color:var(--muted);font-size:13px;background:var(--panel2);border-radius:8px;">📷 Nuotraukų nėra</div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('logDetailModal')" style="flex:1">Uždaryti</button>
+      <button class="btn btn-primary" id="ldEditBtn" style="flex:1;display:none" onclick="switchToEdit()">✏️ Koreguoti</button>
     </div>
   </div>
 </div>
@@ -874,13 +899,17 @@ async function renderSupTable(){
     const wt=workTypes.find(w=>w.id===l.work_type_id);
     const d=deliveredByType[l.work_type_id]||0;
     const over=d>0&&usedByType[l.work_type_id]>d;
-    return `<tr>
+    const hasPhoto=l.photo_urls?.length>0;
+    return `<tr style="cursor:pointer" onclick="openLogDetail('${l.id}',true)">
       <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="background:${u?.color};width:24px;height:24px;font-size:9px">${u?.initials}</div>${u?.full_name?.split(' ')[0]}</div></td>
       <td>${wt?.icon} ${wt?.name}</td>
       <td class="${over?'warn-cell':'mono'}">${l.qty} ${wt?.unit}${over?' ⚠️':''}${l.corrected?' ✏️':''}</td>
       <td class="mono">${fmtH(l.hrs)}</td>
-      <td style="color:var(--muted);font-size:12px">${l.notes||'—'}</td>
-      <td><button onclick="openEditLog('${l.id}')" style="background:var(--accent-dim);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;color:var(--accent);cursor:pointer;font-family:Inter,sans-serif;">Keisti</button></td>
+      <td style="color:var(--muted);font-size:12px">${l.notes?l.notes.slice(0,30)+(l.notes.length>30?'...':''):'—'}</td>
+      <td style="white-space:nowrap">
+        ${hasPhoto?'<span style="font-size:14px;margin-right:4px">📷</span>':''}
+        <button onclick="event.stopPropagation();openEditLog('${l.id}')" style="background:var(--accent-dim);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;color:var(--accent);cursor:pointer;font-family:Inter,sans-serif;">Keisti</button>
+      </td>
     </tr>`;
   }).join('')+'</tbody>';
 }
@@ -1050,7 +1079,15 @@ async function renderMgrFeed(){
   el.innerHTML=logs.map(l=>{
     const u=allProfiles.find(p=>p.id===l.worker_id);
     const wt=workTypes.find(w=>w.id===l.work_type_id);
-    return `<div class="log-item"><div class="log-icon">${wt?.icon}</div><div class="log-body"><div class="log-name">${u?.full_name} – ${wt?.name}</div><div class="log-meta">${l.qty} ${wt?.unit} · ${fmtH(l.hrs)}${l.notes?' · '+l.notes:''}</div></div></div>`;
+    const hasPhoto=l.photo_urls?.length>0;
+    return `<div class="log-item" style="cursor:pointer" onclick="openLogDetail('${l.id}',false)">
+      <div class="log-icon">${wt?.icon}</div>
+      <div class="log-body">
+        <div class="log-name">${u?.full_name} – ${wt?.name}${hasPhoto?' 📷':''}</div>
+        <div class="log-meta">${l.qty} ${wt?.unit} · ${fmtH(l.hrs)}${l.notes?' · '+l.notes.slice(0,40):''}</div>
+      </div>
+      <div style="color:var(--muted);font-size:18px">›</div>
+    </div>`;
   }).join('');
 }
 
@@ -1163,6 +1200,87 @@ async function removeMgrWorker(wid){
   await sb.from('object_workers').delete().eq('object_id',mgrObjId).eq('worker_id',wid);
   showToast('Montuotojas pašalintas','warn-t');
   renderMgrObjWorkers();
+}
+
+
+let currentDetailLog = null;
+
+async function openLogDetail(logId, canEdit=false){
+  const {data:log}=await sb.from('work_logs').select('*').eq('id',logId).single();
+  if(!log)return;
+  currentDetailLog=log;
+  const u=allProfiles.find(p=>p.id===log.worker_id);
+  const wt=workTypes.find(w=>w.id===log.work_type_id);
+
+  // Title
+  document.getElementById('ldTitle').textContent=`${wt?.icon} ${wt?.name}`;
+
+  // Worker info
+  document.getElementById('ldWorkerInfo').innerHTML=`
+    <div class="avatar" style="background:${u?.color};width:40px;height:40px;font-size:13px">${u?.initials}</div>
+    <div>
+      <div style="font-size:14px;font-weight:700">${u?.full_name}</div>
+      <div style="font-size:12px;color:var(--muted)">${log.log_date} · ${log.corrected?'✏️ Koreguota':'Originalus įrašas'}</div>
+    </div>`;
+
+  // Stats
+  const normH=(log.qty*(norms[log.work_type_id]||0)/60);
+  document.getElementById('ldStats').innerHTML=`
+    <div style="background:var(--panel2);border-radius:8px;padding:12px;text-align:center">
+      <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px">Kiekis</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--accent)">${log.qty} ${wt?.unit}</div>
+    </div>
+    <div style="background:var(--panel2);border-radius:8px;padding:12px;text-align:center">
+      <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px">Laikas</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--green)">${fmtH(log.hrs)}</div>
+    </div>
+    <div style="background:var(--panel2);border-radius:8px;padding:12px;text-align:center">
+      <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px">Norma</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--orange)">${fmtH(normH)}</div>
+    </div>`;
+
+  // Notes
+  const notesEl=document.getElementById('ldNotes');
+  if(log.notes){notesEl.style.display='block';notesEl.innerHTML=`<b style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Komentaras</b><div style="margin-top:6px">${log.notes}</div>`;}
+  else notesEl.style.display='none';
+
+  // Photos
+  const photosEl=document.getElementById('ldPhotos');
+  const noPhotosEl=document.getElementById('ldNoPhotos');
+  const gridEl=document.getElementById('ldPhotoGrid');
+  if(log.photo_urls?.length){
+    photosEl.style.display='block';noPhotosEl.style.display='none';
+    gridEl.innerHTML='<div class="loading"><div class="spinner"></div> Kraunamos nuotraukos...</div>';
+    const urls=await Promise.all(log.photo_urls.map(async path=>{
+      const {data}=await sb.storage.from('work-photos').createSignedUrl(path,3600);
+      return data?.signedUrl||null;
+    }));
+    gridEl.innerHTML=urls.filter(Boolean).map(url=>`
+      <img src="${url}" class="photo-thumb-lg" onclick="openFullscreen('${url}')" alt="Nuotrauka">`
+    ).join('');
+  } else {
+    photosEl.style.display='none';noPhotosEl.style.display='block';
+  }
+
+  // Edit button
+  const editBtn=document.getElementById('ldEditBtn');
+  if(canEdit){editBtn.style.display='block';}
+  else{editBtn.style.display='none';}
+
+  openModal('logDetailModal');
+}
+
+function switchToEdit(){
+  closeModal('logDetailModal');
+  if(currentDetailLog) openEditLog(currentDetailLog.id);
+}
+
+function openFullscreen(url){
+  const div=document.createElement('div');
+  div.className='photo-fullscreen';
+  div.innerHTML=`<img src="${url}" alt="Nuotrauka">`;
+  div.onclick=()=>document.body.removeChild(div);
+  document.body.appendChild(div);
 }
 
 // ADD OBJECT
