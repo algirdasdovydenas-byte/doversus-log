@@ -1163,8 +1163,8 @@ async function calcAndSaveBonus(){
 }
 
 async function loadBonusPct(){
-  const {data}=await sb.from('norms').select('minutes_per_unit').eq('work_type_id','__bonus_pct__').maybeSingle();
-  if(data) bonusPct=data.minutes_per_unit;
+  const {data}=await sb.from('app_settings').select('value').eq('key','bonus_pct').maybeSingle();
+  if(data?.value) bonusPct=parseFloat(data.value);
   const input=document.getElementById('bonusPctInput');
   if(input) input.value=bonusPct;
   const display=document.getElementById('bonusPctDisplay');
@@ -1175,7 +1175,8 @@ async function saveBonusPct(){
   const val=parseFloat(document.getElementById('bonusPctInput').value);
   if(isNaN(val)||val<=0||val>100){showToast('Įveskite teisingą procentą (0.1–100)','err');return;}
   bonusPct=val;
-  await sb.from('norms').upsert({work_type_id:'__bonus_pct__',minutes_per_unit:val,updated_by:currentProfile.id,updated_at:new Date().toISOString()});
+  const {error}=await sb.from('app_settings').upsert({key:'bonus_pct',value:String(val),updated_at:new Date().toISOString()},{onConflict:'key'});
+  if(error){showToast('Klaida išsaugant: '+error.message,'err');return;}
   document.getElementById('bonusPctDisplay').textContent=val;
   showToast(`✓ Premijos dydis išsaugotas: ${val}%`);
   renderBonus();
