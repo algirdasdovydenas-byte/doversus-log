@@ -312,6 +312,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
         <div class="card"><div class="card-hd">⚡ Darbų suvestinė</div><table class="tbl" id="mgrWorkTable"></table></div>
         <div class="card"><div class="card-hd">👷 Darbuotojų indėlis</div><div id="mgrWorkerBreak"></div></div>
       </div>
+      <div class="card">
+        <div class="card-hd">👷 Montuotojai objekte <button class="btn btn-sm btn-secondary" onclick="openMgrAssignWorker()">+ Priskirti</button></div>
+        <div id="mgrObjWorkers"><div class="empty">Nėra priskirtų montuotojų</div></div>
+      </div>
       <div class="card"><div class="card-hd">📋 Paskutiniai įrašai</div><div id="mgrFeed"></div></div>
     </div>
     <div id="mgrWorkers" style="display:none">
@@ -371,7 +375,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
   </div>
 </div>
 
-<!-- ASSIGN WORKER -->
+<!-- ASSIGN WORKER (supervisor) -->
 <div class="overlay" id="assignModal">
   <div class="modal">
     <div class="modal-hd">👷 Priskirti montuotoją</div>
@@ -379,6 +383,18 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('assignModal')">Atšaukti</button>
       <button class="btn btn-primary" style="flex:2" onclick="assignWorker()">Priskirti</button>
+    </div>
+  </div>
+</div>
+
+<!-- ASSIGN WORKER (manager) -->
+<div class="overlay" id="mgrAssignModal">
+  <div class="modal">
+    <div class="modal-hd">👷 Priskirti montuotoją prie objekto</div>
+    <div class="form-row"><label>Montuotojas</label><select id="mgrAssignSel"></select></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('mgrAssignModal')">Atšaukti</button>
+      <button class="btn btn-primary" style="flex:2" onclick="mgrAssignWorker()">Priskirti</button>
     </div>
   </div>
 </div>
@@ -961,7 +977,7 @@ async function initManager(){
   document.getElementById('mgrDate').textContent=new Date().toLocaleDateString('lt-LT',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   if(allObjects.length) mgrObjId=allObjects[0].id;
   renderMgrObjTabs();
-  await Promise.all([renderMgrStats(),renderMgrWorkTable(),renderMgrWorkerBreak(),renderMgrFeed()]);
+  await Promise.all([renderMgrStats(),renderMgrWorkTable(),renderMgrWorkerBreak(),renderMgrFeed(),renderMgrObjWorkers()]);
   renderMgrWorkersTab();
   buildBonusMonths();
 }
@@ -978,7 +994,7 @@ function mgrTab(tab,btn){
 function renderMgrObjTabs(){
   document.getElementById('mgrObjTabs').innerHTML=allObjects.map(o=>`<button class="tab ${o.id===mgrObjId?'active':''}" onclick="selMgrObj('${o.id}')">${o.name}</button>`).join('');
 }
-async function selMgrObj(id){mgrObjId=id;renderMgrObjTabs();await Promise.all([renderMgrStats(),renderMgrWorkTable(),renderMgrWorkerBreak(),renderMgrFeed()]);}
+async function selMgrObj(id){mgrObjId=id;renderMgrObjTabs();await Promise.all([renderMgrStats(),renderMgrWorkTable(),renderMgrWorkerBreak(),renderMgrFeed(),renderMgrObjWorkers()]);}
 
 async function renderMgrStats(){
   const {data:logs}=await sb.from('work_logs').select('*').eq('object_id',mgrObjId).eq('log_date',todayStr());
@@ -1099,6 +1115,54 @@ async function renderBonus(){
 
 async function calcAndSaveBonus(){
   await renderBonus();showToast('✓ Priedai apskaičiuoti');
+}
+
+
+async function openMgrAssignWorker(){
+  const {data:ow}=await sb.from('object_workers').select('worker_id').eq('object_id',mgrObjId);
+  const assigned=(ow||[]).map(r=>r.worker_id);
+  const unassigned=allProfiles.filter(p=>p.role==='montuotojas'&&!assigned.includes(p.id));
+  document.getElementById('mgrAssignSel').innerHTML=unassigned.length
+    ?unassigned.map(u=>`<option value="${u.id}">${u.full_name}</option>`).join('')
+    :'<option value="">Visi montuotojai jau priskirti</option>';
+  openModal('mgrAssignModal');
+}
+
+async function mgrAssignWorker(){
+  const wid=document.getElementById('mgrAssignSel').value;
+  if(!wid){showToast('Nėra laisvų montuotojų','err');return;}
+  const {error}=await sb.from('object_workers').upsert({object_id:mgrObjId,worker_id:wid});
+  if(error){showToast('Klaida: '+error.message,'err');return;}
+  closeModal('mgrAssignModal');
+  showToast('✓ Montuotojas priskirtas');
+  renderMgrObjWorkers();
+}
+
+async function renderMgrObjWorkers(){
+  const {data:ow}=await sb.from('object_workers').select('worker_id').eq('object_id',mgrObjId);
+  const ids=(ow||[]).map(r=>r.worker_id);
+  const workers=allProfiles.filter(p=>ids.includes(p.id));
+  const {data:logs}=await sb.from('work_logs').select('worker_id,hrs').eq('object_id',mgrObjId).eq('log_date',todayStr());
+  const el=document.getElementById('mgrObjWorkers');
+  if(!workers.length){el.innerHTML='<div class="empty">Nėra priskirtų montuotojų</div>';return;}
+  el.innerHTML=workers.map(u=>{
+    const hrs=(logs||[]).filter(l=>l.worker_id===u.id).reduce((s,l)=>s+l.hrs,0);
+    return `<div class="w-row">
+      <div class="avatar" style="background:${u.color};width:32px;height:32px;font-size:11px">${u.initials}</div>
+      <div class="w-info"><div class="w-name">${u.full_name}</div><div class="w-sub">${hrs>0?'🟢 Aktyvus šiandien':'⚪ Neprisijungęs'}</div></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:${hrs>0?'var(--green)':'var(--muted)'}">${hrs>0?fmtH(hrs):'—'}</div>
+        <button onclick="removeMgrWorker('${u.id}')" style="background:var(--red-dim);border:1px solid #DC262625;border-radius:6px;padding:3px 8px;font-size:10px;color:var(--red);cursor:pointer;font-family:Inter,sans-serif;">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function removeMgrWorker(wid){
+  if(!confirm('Pašalinti montuotoją nuo objekto?'))return;
+  await sb.from('object_workers').delete().eq('object_id',mgrObjId).eq('worker_id',wid);
+  showToast('Montuotojas pašalintas','warn-t');
+  renderMgrObjWorkers();
 }
 
 // ADD OBJECT
