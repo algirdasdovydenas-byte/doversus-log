@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>DoversusLog</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+:root{
+  --accent:#2E7EC7;--accent-dim:#2E7EC715;--accent-light:#5BA3E0;
+  --bg:#F7FAFD;--panel:#FFFFFF;--panel2:#F0F6FC;--border:#D8E8F5;
+  --text:#1A2B3C;--muted:#7A9BBB;
+  --green:#16A34A;--green-dim:#16A34A15;
+  --red:#DC2626;--red-dim:#DC262615;
+  --orange:#D97706;--orange-dim:#D9770615;
+  --purple:#7C3AED;--purple-dim:#7C3AED15;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* TOPBAR */
+.topbar{background:var(--panel);border-bottom:1px solid var(--border);padding:0 20px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 1px 8px #2E7EC710;}
+.logo{font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;}
+.logo-icon{width:28px;height:28px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:800;}
+.logo span{color:var(--accent);}
+.user-info{display:flex;align-items:center;gap:10px;}
+.avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0;}
+.role-pill{padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.3px;}
+.role-pill.montuotojas{background:var(--accent-dim);color:var(--accent);}
+.role-pill.darbo-vadovas{background:var(--green-dim);color:var(--green);}
+.role-pill.vadovas{background:var(--purple-dim);color:var(--purple);}
+.btn-logout{background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;font-family:'Inter',sans-serif;padding:4px 8px;border-radius:6px;}
+.btn-logout:hover{background:var(--panel2);}
+
+/* VIEWS */
+.view{display:none;}.view.active{display:block;}
+
+/* LOGIN */
+.login-wrap{min-height:calc(100vh - 56px);display:flex;align-items:center;justify-content:center;padding:20px;}
+.login-box{width:100%;max-width:420px;}
+.login-title{font-size:24px;font-weight:800;margin-bottom:4px;}
+.login-sub{color:var(--muted);font-size:13px;margin-bottom:28px;}
+.form-row{margin-bottom:14px;}
+.form-row label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;}
+.form-row input,.form-row select,.form-row textarea{width:100%;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:11px 13px;color:var(--text);font-size:14px;font-family:'Inter',sans-serif;outline:none;transition:border-color .15s;}
+.form-row input:focus,.form-row select:focus,.form-row textarea:focus{border-color:var(--accent);}
+.btn{padding:11px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:'Inter',sans-serif;transition:opacity .15s;}
+.btn:hover{opacity:.87;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-full{width:100%;padding:13px;}
+.btn-secondary{background:var(--panel2);border:1px solid var(--border);color:var(--text);}
+.btn-sm{padding:6px 12px;font-size:11px;border-radius:6px;}
+.btn-danger{background:var(--red-dim);color:var(--red);border:1px solid #DC262625;}
+.divider{text-align:center;color:var(--muted);font-size:12px;margin:16px 0;position:relative;}
+.divider::before,.divider::after{content:'';position:absolute;top:50%;width:42%;height:1px;background:var(--border);}
+.divider::before{left:0;}.divider::after{right:0;}
+
+/* PAGE LAYOUTS */
+.page{max-width:520px;margin:0 auto;padding:20px 16px 90px;}
+.page.wide{max-width:1100px;padding:24px 20px 40px;}
+
+/* CARDS */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:14px;}
+.card-hd{font-size:13px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin-bottom:16px;}
+.stat{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;}
+.stat-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+.stat-val{font-size:26px;font-weight:800;font-family:'JetBrains Mono',monospace;margin:4px 0 2px;}
+.stat-unit{font-size:11px;color:var(--muted);}
+.stat.blue .stat-val{color:var(--accent);}
+.stat.green .stat-val{color:var(--green);}
+.stat.orange .stat-val{color:var(--orange);}
+.stat.purple .stat-val{color:var(--purple);}
+
+/* TABS */
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;}
+.tab{padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--panel);color:var(--muted);transition:all .15s;font-family:'Inter',sans-serif;}
+.tab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;}
+.tbl th{text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:8px 10px;border-bottom:1px solid var(--border);}
+.tbl td{padding:10px;font-size:13px;border-bottom:1px solid var(--border);}
+.tbl tr:last-child td{border-bottom:none;}
+.mono{font-family:'JetBrains Mono',monospace;color:var(--accent);}
+.warn-cell{color:var(--orange);font-weight:600;}
+
+/* WORK TYPE GRID */
+.wt-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.wt-btn{padding:10px 6px;background:var(--panel2);border:1.5px solid var(--border);border-radius:8px;cursor:pointer;text-align:center;transition:all .15s;font-family:'Inter',sans-serif;color:var(--text);}
+.wt-btn:hover,.wt-btn.sel{border-color:var(--accent);background:var(--accent-dim);}
+.wt-icon{font-size:18px;margin-bottom:3px;}
+.wt-name{font-size:10px;font-weight:600;line-height:1.2;}
+.wt-unit{font-size:9px;color:var(--muted);margin-top:2px;}
+
+/* WORKER ROW */
+.w-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+.w-row:last-child{border-bottom:none;}
+.w-info{flex:1;}
+.w-name{font-size:13px;font-weight:600;}
+.w-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+.prog{height:4px;background:var(--border);border-radius:2px;margin-top:5px;}
+.prog-fill{height:100%;border-radius:2px;background:var(--accent);}
+
+/* LOG ITEMS */
+.log-item{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);}
+.log-item:last-child{border-bottom:none;}
+.log-icon{font-size:20px;margin-top:1px;}
+.log-body{flex:1;}
+.log-name{font-size:13px;font-weight:600;}
+.log-meta{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5;}
+.log-qty{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:var(--accent);}
+
+/* GPS & TIMER */
+.gps-bar{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;font-size:12px;font-weight:600;margin-bottom:14px;}
+.gps-bar.ok{background:var(--green-dim);color:var(--green);}
+.gps-bar.warn{background:var(--orange-dim);color:var(--orange);}
+.gps-bar.off{background:var(--panel2);color:var(--muted);}
+.gps-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.gps-bar.ok .gps-dot{background:var(--green);}
+.gps-bar.warn .gps-dot{background:var(--orange);}
+.gps-bar.off .gps-dot{background:var(--muted);}
+.timer-card{background:var(--accent);border-radius:12px;padding:22px;margin-bottom:14px;color:#fff;text-align:center;}
+.timer-lbl{font-size:11px;font-weight:600;opacity:.8;letter-spacing:1px;text-transform:uppercase;}
+.timer-val{font-family:'JetBrains Mono',monospace;font-size:40px;font-weight:700;margin:6px 0;}
+.timer-obj{font-size:12px;opacity:.8;margin-bottom:14px;}
+.btn-stop{background:#fff;color:var(--accent);border:none;border-radius:8px;padding:10px 28px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;}
+
+/* COLLEAGUE CHIPS */
+.col-grid{display:flex;flex-wrap:wrap;gap:6px;}
+.col-chip{display:flex;align-items:center;gap:6px;padding:5px 10px;background:var(--panel2);border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:12px;font-weight:500;transition:all .15s;}
+.col-chip:hover,.col-chip.sel{border-color:var(--accent);background:var(--accent-dim);color:var(--accent);}
+.mini-av{width:18px;height:18px;border-radius:50%;font-size:8px;font-weight:800;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+
+/* MATERIAL PROGRESS */
+.mat-item{margin-bottom:12px;}
+.mat-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+.mat-name{font-size:13px;font-weight:600;}
+.mat-qty{font-size:12px;}
+.mat-warn{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--orange-dim);border:1px solid #D9770625;border-radius:7px;font-size:12px;color:var(--orange);font-weight:600;margin-top:6px;}
+
+/* BONUS */
+.bonus-worker-card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:10px;}
+.bonus-trio{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;margin-top:12px;}
+.bonus-trio-item{background:var(--panel2);border-radius:8px;padding:10px;}
+.bonus-trio-lbl{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;}
+.bonus-trio-val{font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:700;}
+
+/* NORM ROW */
+.norm-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+.norm-row:last-child{border-bottom:none;}
+.norm-name{flex:1;font-size:13px;font-weight:600;}
+.norm-input{width:90px;background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:13px;color:var(--text);font-family:'JetBrains Mono',monospace;text-align:right;outline:none;}
+.norm-input:focus{border-color:var(--accent);}
+.norm-unit{font-size:11px;color:var(--muted);width:60px;}
+
+/* MODAL */
+.overlay{display:none;position:fixed;inset:0;background:rgba(15,30,50,.55);z-index:200;align-items:center;justify-content:center;padding:16px;}
+.overlay.open{display:flex;}
+.modal{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:26px;width:100%;max-width:440px;max-height:92vh;overflow-y:auto;}
+.modal-hd{font-size:17px;font-weight:800;margin-bottom:18px;}
+.modal-footer{display:flex;gap:8px;margin-top:18px;}
+
+/* LOADING */
+.loading{display:flex;align-items:center;justify-content:center;min-height:200px;color:var(--muted);font-size:14px;gap:10px;}
+.spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* EMPTY */
+.empty{text-align:center;padding:24px;color:var(--muted);font-size:13px;}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--green);color:#fff;padding:11px 22px;border-radius:50px;font-size:13px;font-weight:600;z-index:300;transition:transform .3s;white-space:nowrap;pointer-events:none;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.toast.err{background:var(--red);}
+.toast.warn-t{background:var(--orange);}
+
+/* TWO COL */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.mgr-two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+@media(max-width:700px){.mgr-two{grid-template-columns:1fr;}}
+@media(max-width:480px){.stats-grid{grid-template-columns:1fr 1fr;}.wt-grid{grid-template-columns:repeat(3,1fr);}}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo"><div class="logo-icon">D</div>Doversus<span>Log</span></div>
+  <div class="user-info" id="topInfo" style="display:none">
+    <div class="avatar" id="topAv"></div>
+    <div>
+      <div style="font-size:13px;font-weight:600" id="topName"></div>
+      <div class="role-pill" id="topRole"></div>
+    </div>
+    <button class="btn-logout" onclick="logout()">Išeiti</button>
+  </div>
+</div>
+
+<!-- ═══ LOGIN ═══ -->
+<div id="loginView" class="view active">
+  <div class="login-wrap">
+    <div class="login-box">
+      <div class="login-title">Prisijungti</div>
+      <div class="login-sub">DoversusLog – Darbų apskaitos sistema</div>
+      <div class="form-row"><label>El. paštas</label><input type="email" id="loginEmail" placeholder="vardas@doversus.lt"></div>
+      <div class="form-row"><label>Slaptažodis</label><input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <button class="btn btn-primary btn-full" onclick="doLogin()" id="loginBtn">Prisijungti</button>
+      <div style="margin-top:12px;text-align:center;font-size:12px;color:var(--muted)">Pirmą kartą? Kreipkitės į įmonės vadovą.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MONTUOTOJAS ═══ -->
+<div id="workerView" class="view">
+  <div class="page">
+    <div class="gps-bar off" id="gpsBar"><div class="gps-dot"></div><span id="gpsText">GPS tikrinama...</span></div>
+
+    <div id="timerCard" style="display:none">
+      <div class="timer-card">
+        <div class="timer-lbl">Darbo laikas</div>
+        <div class="timer-val" id="timerVal">00:00:00</div>
+        <div class="timer-obj" id="timerObj"></div>
+        <button class="btn-stop" onclick="stopWork()">⏹ Baigti darbą</button>
+      </div>
+    </div>
+
+    <div id="startCard">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Pradėti darbą</div>
+      <div class="card">
+        <div class="form-row"><label>Objektas</label><select id="wObj" onchange="updateGPS()"></select></div>
+        <button class="btn btn-primary btn-full" onclick="startWork()">▶ Pradėti darbą</button>
+      </div>
+    </div>
+
+    <div id="logWorkCard" style="display:none">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Įvesti atliktą darbą</div>
+      <div class="card">
+        <div class="form-row"><label>Darbo tipas</label><div class="wt-grid" id="wtGrid"></div></div>
+        <div class="form-row two-col">
+          <div><label>Kiekis</label><input type="number" id="wQty" placeholder="0" min="0" step="0.1" oninput="checkMatWarn()"></div>
+          <div><label>Vienetas</label><div style="background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:11px 13px;font-size:14px;color:var(--muted)" id="wUnit">—</div></div>
+        </div>
+        <div id="matWarnInline" style="display:none" class="mat-warn">⚠️ <span id="matWarnText"></span></div>
+        <div class="form-row"><label>Kolegos (jei dirbote kartu)</label><div class="col-grid" id="colGrid"></div></div>
+        <div class="form-row"><label>Pastabos</label><input type="text" id="wNotes" placeholder="Neprivaloma..."></div>
+        <div class="form-row">
+          <label>Nuotrauka</label>
+          <label style="display:flex;align-items:center;gap:8px;padding:11px 13px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;color:var(--muted);">
+            <input type="file" accept="image/*" multiple style="display:none" id="photoInput" onchange="previewPhotos(this)">📷 Pridėti nuotrauką
+          </label>
+          <div id="photoPreview" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;"></div>
+        </div>
+        <button class="btn btn-primary btn-full" onclick="submitLog()">✓ Išsaugoti darbą</button>
+      </div>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Šiandien įrašyta</div>
+    <div class="card" id="todayLog"><div class="empty">Dar nėra įrašų</div></div>
+  </div>
+</div>
+
+<!-- ═══ DARBŲ VADOVAS ═══ -->
+<div id="supervisorView" class="view">
+  <div class="page wide">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+      <div><div style="font-size:20px;font-weight:800;">Mano objektai</div><div style="font-size:13px;color:var(--muted)" id="supDate"></div></div>
+    </div>
+    <div class="tabs" id="supTabs"></div>
+    <div class="stats-grid" id="supStats"></div>
+    <div class="mgr-two">
+      <div class="card">
+        <div class="card-hd">📦 Medžiagos<button class="btn btn-sm btn-secondary" onclick="openMatModal()">+ Įvesti</button></div>
+        <div id="matList"><div class="empty">Nėra duomenų</div></div>
+      </div>
+      <div class="card">
+        <div class="card-hd">👷 Montuotojai<button class="btn btn-sm btn-secondary" onclick="openAssignWorker()">+ Priskirti</button></div>
+        <div id="supWorkers"><div class="empty">Nėra duomenų</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hd">📋 Darbų žurnalas<button class="btn btn-sm btn-secondary" onclick="openAddLogModal()">+ Įvesti</button></div>
+      <div style="overflow-x:auto"><table class="tbl" id="supTable"></table></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ĮMONĖS VADOVAS ═══ -->
+<div id="managerView" class="view">
+  <div class="page wide">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+      <div><div style="font-size:20px;font-weight:800;">Vadovo suvestinė</div><div style="font-size:13px;color:var(--muted)" id="mgrDate"></div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-secondary btn-sm" onclick="openNorms()">⚙️ Normatyvai</button>
+        <button class="btn btn-secondary btn-sm" onclick="openAddUser()">+ Darbuotojas</button>
+        <button class="btn btn-primary btn-sm" onclick="openAddObject()">+ Objektas</button>
+      </div>
+    </div>
+    <div class="tabs">
+      <button class="tab active" onclick="mgrTab('objects',this)">🏗️ Objektai</button>
+      <button class="tab" onclick="mgrTab('workers',this)">👷 Darbuotojai</button>
+      <button class="tab" onclick="mgrTab('bonus',this)">💰 Priedai</button>
+    </div>
+    <div id="mgrObjects">
+      <div class="tabs" id="mgrObjTabs"></div>
+      <div class="stats-grid" id="mgrStats"></div>
+      <div class="mgr-two">
+        <div class="card"><div class="card-hd">⚡ Darbų suvestinė</div><table class="tbl" id="mgrWorkTable"></table></div>
+        <div class="card"><div class="card-hd">👷 Darbuotojų indėlis</div><div id="mgrWorkerBreak"></div></div>
+      </div>
+      <div class="card"><div class="card-hd">📋 Paskutiniai įrašai</div><div id="mgrFeed"></div></div>
+    </div>
+    <div id="mgrWorkers" style="display:none">
+      <div class="stats-grid" id="mgrWStats"></div>
+      <div class="card"><div class="card-hd">Visi darbuotojai</div><div id="allWorkers"></div></div>
+    </div>
+    <div id="mgrBonus" style="display:none">
+      <div style="background:var(--accent-dim);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px;font-size:13px;color:var(--accent);">
+        💡 Priedas = (Normatyvinis laikas − Faktinis laikas) × 2%. Rodoma valandomis. Vadovas nustato finansinę išraišką.
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;">
+        <select id="bonusMonthSel" style="background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--text);outline:none;font-family:'Inter',sans-serif;" onchange="renderBonus()"></select>
+        <button class="btn btn-secondary btn-sm" onclick="calcAndSaveBonus()">Skaičiuoti mėnesį</button>
+      </div>
+      <div id="bonusList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ MODALS ════ -->
+<!-- ADD OBJECT -->
+<div class="overlay" id="addObjModal">
+  <div class="modal">
+    <div class="modal-hd">🏗️ Naujas objektas</div>
+    <div class="form-row"><label>Pavadinimas</label><input id="newObjName" placeholder="pvz. Vilnius, Gedimino pr. 15"></div>
+    <div class="form-row"><label>Adresas (tikslus)</label><input id="newObjAddr" placeholder="Gedimino pr. 15, Vilnius"></div>
+    <div class="form-row two-col">
+      <div><label>Platuma (lat)</label><input id="newObjLat" placeholder="54.6872" type="number" step="0.0001"></div>
+      <div><label>Ilguma (lng)</label><input id="newObjLng" placeholder="25.2797" type="number" step="0.0001"></div>
+    </div>
+    <div class="form-row"><label>Darbų vadovas</label><select id="newObjSup"></select></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('addObjModal')">Atšaukti</button>
+      <button class="btn btn-primary" style="flex:2" onclick="addObject()">Sukurti</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD USER -->
+<div class="overlay" id="addUserModal">
+  <div class="modal">
+    <div class="modal-hd">👤 Naujas darbuotojas</div>
+    <div class="form-row"><label>Vardas Pavardė</label><input id="newUserName" placeholder="Vardas Pavardė"></div>
+    <div class="form-row"><label>El. paštas</label><input id="newUserEmail" placeholder="vardas@doversus.lt" type="email"></div>
+    <div class="form-row"><label>Laikinas slaptažodis</label><input id="newUserPass" placeholder="Min. 8 simboliai" type="password"></div>
+    <div class="form-row"><label>Rolė</label>
+      <select id="newUserRole">
+        <option value="montuotojas">Montuotojas</option>
+        <option value="darbo-vadovas">Darbų vadovas</option>
+        <option value="vadovas">Įmonės vadovas</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('addUserModal')">Atšaukti</button>
+      <button class="btn btn-primary" style="flex:2" id="addUserBtn" onclick="addUser()">Sukurti paskyrą</button>
+    </div>
+  </div>
+</div>
+
+<!-- ASSIGN WORKER -->
+<div class="overlay" id="assignModal">
+  <div class="modal">
+    <div class="modal-hd">👷 Priskirti montuotoją</div>
+    <div class="form-row"><label>Montuotojas</label><select id="assignSel"></select></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('assignModal')">Atšaukti</button>
+      <button class="btn btn-primary" style="flex:2" onclick="assignWorker()">Priskirti</button>
+    </div>
+  </div>
+</div>
+
+<!-- MATERIALS -->
+<div class="overlay" id="matModal">
+  <div class="modal">
+    <div class="modal-hd">📦 Įvesti medžiagas</div>
+    <div class="form-row"><label>Medžiaga / Tipas</label><select id="matTypeSel" onchange="updateMatUnit()"></select></div>
+    <div class="form-row two-col">
+      <div><label>Kiekis</label><input type="number" id="matQty" placeholder="0" min="0" step="0.1"></div>
+      <div><label>Vienetas</label><div style="background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:11px 13px;font-size:14px;color:var(--muted)" id="matUnitLbl">—</div></div>
+    </div>
+    <div class="form-row"><label>Pastabos</label><input id="matNotes" placeholder="Neprivaloma..."></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('matModal')">Atšaukti</button>
+      <button class="btn btn-primary" style="flex:2" onclick="addMaterial()">Išsaugoti</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD LOG FOR WORKER -->
+<div class="overlay" id="addLogModal">
+  <div class="modal">
+    <div class="modal-hd">✏️ Įvesti darbą už montuotoją</div>
+    <div class="form-row"><label>Montuotojas</label><select id="logWorkerSel"></select></div>
+    <div class="form-row"><label>Darbo tipas</label><select id="logTypeSel"></select></div>
+    <div class="form-row two-col">
+      <div><label>Kiekis</label><input type="number" id="logQty" placeholder="0" step="0.1"></div>
+      <div><label>Valandos</label><input type="number" id="logHrs" placeholder="2.5" step="0.5"></div>
+    </div>
+    <div class="form-row"><label>Data</label><input type="date" id="logDate"></div>
+    <div class="form-row"><label>Pastabos</label><input id="logNotes" placeholder="Neprivaloma..."></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('addLogModal')">Atšaukti</button>
+      <button class="btn btn-primary" style="flex:2" onclick="submitLogForWorker()">Išsaugoti</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT LOG -->
+<div class="overlay" id="editLogModal">
+  <div class="modal">
+    <div class="modal-hd">✏️ Koreguoti įrašą</div>
+    <div id="editLogInfo" style="background:var(--panel2);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--muted);"></div>
+    <div class="form-row two-col">
+      <div><label>Kiekis</label><input type="number" id="editQty" placeholder="0" step="0.1"></div>
+      <div><label>Valandos</label><input type="number" id="editHrs" placeholder="0.0" step="0.5"></div>
+    </div>
+    <div class="form-row"><label>Pastabos</label><input type="text" id="editNotes"></div>
+    <div style="background:var(--orange-dim);border:1px solid #D9770625;border-radius:8px;padding:10px 14px;font-size:12px;color:var(--orange);margin-bottom:4px;">⚠️ Korekcija bus pažymėta kaip vadovo pataisymas</div>
+    <div class="modal-footer">
+      <button class="btn btn-danger btn-sm" onclick="deleteLog()" style="flex:1">🗑 Ištrinti</button>
+      <button class="btn btn-secondary" onclick="closeModal('editLogModal')" style="flex:1">Atšaukti</button>
+      <button class="btn btn-primary" style="flex:2" onclick="saveEditLog()">Išsaugoti</button>
+    </div>
+  </div>
+</div>
+
+<!-- NORMS -->
+<div class="overlay" id="normsModal">
+  <div class="modal">
+    <div class="modal-hd">⚙️ Normatyvai</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Minutės vienam vienetui. Pvz. 1m kabelio = 5 min.</div>
+    <div id="normsList"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('normsModal')">Uždaryti</button>
+      <button class="btn btn-primary" style="flex:2" onclick="saveNorms()">Išsaugoti</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// SUPABASE INIT
+// ═══════════════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://vamvnoykmycgxmzxoedj.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_m1iUG3D7YNwtN48NGqzX2w_JnCbMmaz';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+let currentUser = null;
+let currentProfile = null;
+let myObjects = [];
+let allObjects = [];
+let allProfiles = [];
+let workTypes = [];
+let norms = {};
+let activeSession = null;
+let activeObjId = null;
+let timerInterval = null;
+let workStart = null;
+let selectedWT = null;
+let selectedColleagues = [];
+let supObjId = null;
+let mgrObjId = null;
+let editingLogId = null;
+let userLat = null, userLng = null;
+
+// ═══════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════
+const todayStr = () => new Date().toISOString().split('T')[0];
+const fmtH = h => parseFloat(h||0).toFixed(1)+'h';
+
+function showToast(msg, type=''){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast '+(type||'');
+  t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2800);
+}
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+function hideAll(){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));}
+
+function roleName(r){return {vadovas:'Įmonės vadovas','darbo-vadovas':'Darbų vadovas',montuotojas:'Montuotojas'}[r]||r;}
+
+function dist(lat1,lng1,lat2,lng2){
+  const R=6371000,dLat=(lat2-lat1)*Math.PI/180,dLng=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════════════
+async function doLogin(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  if(!email||!pass){showToast('Užpildykite visus laukus','err');return;}
+  const btn = document.getElementById('loginBtn');
+  btn.disabled=true; btn.textContent='Jungiamasi...';
+  const {data,error} = await sb.auth.signInWithPassword({email,password:pass});
+  btn.disabled=false; btn.textContent='Prisijungti';
+  if(error){showToast('Klaida: '+error.message,'err');return;}
+  await afterLogin(data.user);
+}
+
+async function afterLogin(user){
+  currentUser = user;
+  const {data:profile} = await sb.from('profiles').select('*').eq('id',user.id).single();
+  currentProfile = profile;
+  await loadGlobalData();
+  setupTopbar();
+  hideAll();
+  if(profile.role==='montuotojas') initWorker();
+  else if(profile.role==='darbo-vadovas') initSupervisor();
+  else initManager();
+}
+
+async function logout(){
+  await sb.auth.signOut();
+  currentUser=null; currentProfile=null;
+  stopTimer(); hideAll();
+  document.getElementById('topInfo').style.display='none';
+  document.getElementById('loginView').classList.add('active');
+}
+
+function setupTopbar(){
+  document.getElementById('topInfo').style.display='flex';
+  document.getElementById('topAv').textContent=currentProfile.initials||'??';
+  document.getElementById('topAv').style.background=currentProfile.color||'#2E7EC7';
+  document.getElementById('topName').textContent=currentProfile.full_name;
+  const rp=document.getElementById('topRole');
+  rp.textContent=roleName(currentProfile.role);
+  rp.className='role-pill '+currentProfile.role;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GLOBAL DATA
+// ═══════════════════════════════════════════════════════════════
+async function loadGlobalData(){
+  const [objRes,profRes,wtRes,normRes] = await Promise.all([
+    sb.from('objects').select('*').eq('is_active',true),
+    sb.from('profiles').select('*'),
+    sb.from('work_types').select('*'),
+    sb.from('norms').select('*'),
+  ]);
+  allObjects = objRes.data||[];
+  allProfiles = profRes.data||[];
+  workTypes = wtRes.data||[];
+  norms = {};
+  (normRes.data||[]).forEach(n=>norms[n.work_type_id]=n.minutes_per_unit);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// WORKER VIEW
+// ═══════════════════════════════════════════════════════════════
+async function initWorker(){
+  document.getElementById('workerView').classList.add('active');
+  // Load assigned objects
+  const {data:ow} = await sb.from('object_workers').select('object_id').eq('worker_id',currentProfile.id);
+  const myObjIds = (ow||[]).map(r=>r.object_id);
+  myObjects = allObjects.filter(o=>myObjIds.includes(o.id));
+  const sel=document.getElementById('wObj');
+  sel.innerHTML = myObjects.length
+    ? myObjects.map(o=>`<option value="${o.id}">${o.name}</option>`).join('')
+    : '<option value="">Nepriskirtas prie objektų</option>';
+  buildWTGrid();
+  initGPS();
+  // Check for active session
+  const {data:sess} = await sb.from('work_sessions').select('*').eq('worker_id',currentProfile.id).is('ended_at',null).maybeSingle();
+  if(sess){
+    activeSession=sess; activeObjId=sess.object_id;
+    workStart=new Date(sess.started_at);
+    const obj=allObjects.find(o=>o.id===activeObjId);
+    document.getElementById('timerObj').textContent=obj?.name||'';
+    document.getElementById('startCard').style.display='none';
+    document.getElementById('timerCard').style.display='block';
+    document.getElementById('logWorkCard').style.display='block';
+    buildColGrid();
+    startTimer();
+  }
+  renderTodayLog();
+}
+
+function buildWTGrid(){
+  document.getElementById('wtGrid').innerHTML=workTypes.map(wt=>`
+    <div class="wt-btn" onclick="selWT('${wt.id}')" id="wt_${wt.id}">
+      <div class="wt-icon">${wt.icon}</div>
+      <div class="wt-name">${wt.name}</div>
+      <div class="wt-unit">${wt.unit}</div>
+    </div>`).join('');
+}
+
+async function buildColGrid(){
+  const {data:ow} = await sb.from('object_workers').select('worker_id').eq('object_id',activeObjId);
+  const ids=(ow||[]).map(r=>r.worker_id).filter(id=>id!==currentProfile.id);
+  const colleagues=allProfiles.filter(p=>ids.includes(p.id));
+  selectedColleagues=[];
+  document.getElementById('colGrid').innerHTML=colleagues.length
+    ?colleagues.map(u=>`<div class="col-chip" onclick="togCol(${JSON.stringify(u.id)},this)" id="cc_${u.id}"><div class="mini-av" style="background:${u.color}">${u.initials}</div>${u.full_name.split(' ')[0]}</div>`).join('')
+    :'<span style="font-size:12px;color:var(--muted)">Nėra kolegų</span>';
+}
+
+function selWT(id){
+  selectedWT=workTypes.find(w=>w.id===id);
+  document.querySelectorAll('.wt-btn').forEach(b=>b.classList.remove('sel'));
+  document.getElementById('wt_'+id).classList.add('sel');
+  document.getElementById('wUnit').textContent=selectedWT.unit;
+  checkMatWarn();
+}
+
+function togCol(id,el){
+  if(selectedColleagues.includes(id)){selectedColleagues=selectedColleagues.filter(c=>c!==id);el.classList.remove('sel');}
+  else{selectedColleagues.push(id);el.classList.add('sel');}
+}
+
+async function checkMatWarn(){
+  if(!selectedWT||!activeObjId)return;
+  const {data:mats}=await sb.from('materials').select('qty').eq('object_id',activeObjId).eq('work_type_id',selectedWT.id);
+  const delivered=(mats||[]).reduce((s,m)=>s+m.qty,0);
+  if(!delivered)return document.getElementById('matWarnInline').style.display='none';
+  const {data:logs}=await sb.from('work_logs').select('qty').eq('object_id',activeObjId).eq('work_type_id',selectedWT.id).eq('log_date',todayStr());
+  const used=(logs||[]).reduce((s,l)=>s+l.qty,0);
+  const qty=parseFloat(document.getElementById('wQty').value)||0;
+  const warn=document.getElementById('matWarnInline');
+  if(used+qty>delivered){warn.style.display='flex';document.getElementById('matWarnText').textContent=`Įvesti kiekiai (${(used+qty).toFixed(1)}) viršija pristatytą (${delivered}) ${selectedWT.unit}!`;}
+  else warn.style.display='none';
+}
+
+async function startWork(){
+  const objId=document.getElementById('wObj').value;
+  if(!objId){showToast('Pasirinkite objektą','err');return;}
+  activeObjId=objId;
+  workStart=new Date();
+  const {data:sess,error}=await sb.from('work_sessions').insert({worker_id:currentProfile.id,object_id:objId,started_at:workStart.toISOString()}).select().single();
+  if(error){showToast('Klaida: '+error.message,'err');return;}
+  activeSession=sess;
+  const obj=allObjects.find(o=>o.id===objId);
+  document.getElementById('timerObj').textContent=obj?.name||'';
+  document.getElementById('startCard').style.display='none';
+  document.getElementById('timerCard').style.display='block';
+  document.getElementById('logWorkCard').style.display='block';
+  buildColGrid();
+  startTimer();
+  showToast('✓ Darbo laikas pradėtas');
+}
+
+async function stopWork(){
+  if(!confirm('Baigti darbo dienos laikmatį?'))return;
+  const ended=new Date();
+  const hrs=parseFloat(((ended-workStart)/3600000).toFixed(2));
+  await sb.from('work_sessions').update({ended_at:ended.toISOString(),duration_hrs:hrs}).eq('id',activeSession.id);
+  stopTimer();
+  activeSession=null;activeObjId=null;workStart=null;selectedWT=null;selectedColleagues=[];
+  document.getElementById('startCard').style.display='block';
+  document.getElementById('timerCard').style.display='none';
+  document.getElementById('logWorkCard').style.display='none';
+  document.getElementById('wUnit').textContent='—';
+  document.querySelectorAll('.wt-btn').forEach(b=>b.classList.remove('sel'));
+  showToast('Darbo diena užbaigta');
+}
+
+function startTimer(){
+  timerInterval=setInterval(()=>{
+    const d=Math.floor((new Date()-workStart)/1000);
+    const h=Math.floor(d/3600),m=Math.floor((d%3600)/60),s=d%60;
+    document.getElementById('timerVal').textContent=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  },1000);
+}
+function stopTimer(){if(timerInterval){clearInterval(timerInterval);timerInterval=null;}}
+
+async function submitLog(){
+  if(!selectedWT){showToast('Pasirinkite darbo tipą','err');return;}
+  const qty=parseFloat(document.getElementById('wQty').value);
+  if(!qty||qty<=0){showToast('Įveskite kiekį','err');return;}
+  const notes=document.getElementById('wNotes').value;
+  const totalPeople=1+selectedColleagues.length;
+  const myQty=parseFloat((qty/totalPeople).toFixed(2));
+  const hrs=workStart?parseFloat(((new Date()-workStart)/3600000/totalPeople).toFixed(2)):1;
+
+  // Upload photos
+  let photoUrls=[];
+  const files=document.getElementById('photoInput').files;
+  for(const file of files){
+    const path=`${currentProfile.id}/${Date.now()}_${file.name}`;
+    const {data:up}=await sb.storage.from('work-photos').upload(path,file);
+    if(up) photoUrls.push(path);
+  }
+
+  const logData={worker_id:currentProfile.id,object_id:activeObjId,session_id:activeSession?.id,work_type_id:selectedWT.id,qty:myQty,hrs,notes,photo_urls:photoUrls,colleagues:selectedColleagues,log_date:todayStr()};
+  const {error}=await sb.from('work_logs').insert([logData]);
+  if(error){showToast('Klaida: '+error.message,'err');return;}
+
+  // Insert for colleagues too
+  for(const cid of selectedColleagues){
+    await sb.from('work_logs').insert([{...logData,worker_id:cid,colleagues:[currentProfile.id,...selectedColleagues.filter(x=>x!==cid)],notes:'(grupinis darbas)'}]);
+  }
+
+  document.getElementById('wQty').value='';
+  document.getElementById('wNotes').value='';
+  document.getElementById('photoPreview').innerHTML='';
+  document.getElementById('photoInput').value='';
+  document.querySelectorAll('.wt-btn,.col-chip').forEach(b=>b.classList.remove('sel'));
+  selectedWT=null;selectedColleagues=[];
+  document.getElementById('wUnit').textContent='—';
+  document.getElementById('matWarnInline').style.display='none';
+  showToast('✓ Darbas išsaugotas!');
+  renderTodayLog();
+}
+
+async function renderTodayLog(){
+  const {data:logs}=await sb.from('work_logs').select('*').eq('worker_id',currentProfile.id).eq('log_date',todayStr()).order('created_at',{ascending:false});
+  const el=document.getElementById('todayLog');
+  if(!logs?.length){el.innerHTML='<div class="empty">Dar nėra įrašų šiandien</div>';return;}
+  el.innerHTML=logs.map(l=>{
+    const wt=workTypes.find(w=>w.id===l.work_type_id);
+    const obj=allObjects.find(o=>o.id===l.object_id);
+    return `<div class="log-item">
+      <div class="log-icon">${wt?.icon||'⚡'}</div>
+      <div class="log-body">
+        <div class="log-name">${wt?.name||l.work_type_id}</div>
+        <div class="log-meta">${obj?.name||''} · ${fmtH(l.hrs)}${l.colleagues?.length?' · 👥 grupinis':''}${l.corrected?' · ✏️ koreguota':''}</div>
+        ${l.notes?`<div class="log-meta">${l.notes}</div>`:''}
+      </div>
+      <div class="log-qty">${l.qty} ${wt?.unit||''}</div>
+    </div>`;
+  }).join('');
+}
+
+function previewPhotos(input){
+  const prev=document.getElementById('photoPreview');prev.innerHTML='';
+  Array.from(input.files).forEach(f=>{const img=document.createElement('img');img.src=URL.createObjectURL(f);img.style.cssText='width:56px;height:56px;border-radius:6px;object-fit:cover;border:1px solid var(--border)';prev.appendChild(img);});
+}
+
+// GPS
+function initGPS(){
+  const bar=document.getElementById('gpsBar'),txt=document.getElementById('gpsText');
+  if(!navigator.geolocation){bar.className='gps-bar off';txt.textContent='GPS nepalaikomas';return;}
+  navigator.geolocation.watchPosition(pos=>{
+    userLat=pos.coords.latitude;userLng=pos.coords.longitude;
+    updateGPS();
+  },()=>{bar.className='gps-bar off';txt.textContent='GPS neprieinamas';});
+}
+function updateGPS(){
+  if(!userLat)return;
+  const bar=document.getElementById('gpsBar'),txt=document.getElementById('gpsText');
+  const objId=document.getElementById('wObj')?.value||activeObjId;
+  const obj=allObjects.find(o=>o.id===objId);
+  if(obj?.lat&&obj?.lng){
+    const d=dist(userLat,userLng,obj.lat,obj.lng);
+    if(d<=300){bar.className='gps-bar ok';txt.textContent=`GPS: Esate objekte (${Math.round(d)}m)`;}
+    else{bar.className='gps-bar warn';txt.textContent=`GPS: ${Math.round(d)}m nuo objekto`;}
+  }else{bar.className='gps-bar ok';txt.textContent='GPS aktyvus';}
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SUPERVISOR VIEW
+// ═══════════════════════════════════════════════════════════════
+async function initSupervisor(){
+  document.getElementById('supervisorView').classList.add('active');
+  document.getElementById('supDate').textContent=new Date().toLocaleDateString('lt-LT',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const {data:os}=await sb.from('object_supervisors').select('object_id').eq('supervisor_id',currentProfile.id);
+  const ids=(os||[]).map(r=>r.object_id);
+  myObjects=allObjects.filter(o=>ids.includes(o.id));
+  if(myObjects.length) supObjId=myObjects[0].id;
+  renderSupTabs();
+  await renderSupContent();
+}
+
+function renderSupTabs(){
+  document.getElementById('supTabs').innerHTML=myObjects.map(o=>`<button class="tab ${o.id===supObjId?'active':''}" onclick="selSupObj('${o.id}')">${o.name}</button>`).join('');
+}
+async function selSupObj(id){supObjId=id;renderSupTabs();await renderSupContent();}
+
+async function renderSupContent(){
+  await Promise.all([renderSupStats(),renderMatList(),renderSupWorkers(),renderSupTable()]);
+}
+
+async function renderSupStats(){
+  const {data:logs}=await sb.from('work_logs').select('*').eq('object_id',supObjId).eq('log_date',todayStr());
+  const hrs=(logs||[]).reduce((s,l)=>s+l.hrs,0);
+  const kab=(logs||[]).filter(l=>l.work_type_id==='kabelis').reduce((s,l)=>s+l.qty,0);
+  const workers=[...new Set((logs||[]).map(l=>l.worker_id))].length;
+  document.getElementById('supStats').innerHTML=`
+    <div class="stat blue"><div class="stat-lbl">Valandos</div><div class="stat-val">${fmtH(hrs)}</div><div class="stat-unit">šiandien</div></div>
+    <div class="stat green"><div class="stat-lbl">Kabelis</div><div class="stat-val">${kab.toFixed(0)}</div><div class="stat-unit">metrų</div></div>
+    <div class="stat orange"><div class="stat-lbl">Darbuotojai</div><div class="stat-val">${workers}</div><div class="stat-unit">aktyvūs</div></div>
+    <div class="stat purple"><div class="stat-lbl">Įrašai</div><div class="stat-val">${(logs||[]).length}</div><div class="stat-unit">šiandien</div></div>`;
+}
+
+async function renderMatList(){
+  const {data:mats}=await sb.from('materials').select('*').eq('object_id',supObjId).order('created_at',{ascending:false});
+  const {data:logs}=await sb.from('work_logs').select('work_type_id,qty').eq('object_id',supObjId).eq('log_date',todayStr());
+  const el=document.getElementById('matList');
+  if(!mats?.length){el.innerHTML='<div class="empty">Medžiagų nėra</div>';return;}
+  const byType={};
+  mats.forEach(m=>{if(!byType[m.work_type_id])byType[m.work_type_id]=0;byType[m.work_type_id]+=m.qty;});
+  const usedByType={};
+  (logs||[]).forEach(l=>{if(!usedByType[l.work_type_id])usedByType[l.work_type_id]=0;usedByType[l.work_type_id]+=l.qty;});
+  el.innerHTML=Object.entries(byType).map(([tid,delivered])=>{
+    const wt=workTypes.find(w=>w.id===tid);
+    const used=usedByType[tid]||0;
+    const pct=Math.min(100,Math.round(used/delivered*100));
+    const over=used>delivered;
+    return `<div class="mat-item">
+      <div class="mat-hd"><span class="mat-name">${wt?.icon} ${wt?.name}</span><span class="mat-qty" style="color:${over?'var(--orange)':'var(--muted)'}">${used.toFixed(1)}/${delivered} ${wt?.unit}</span></div>
+      <div class="prog"><div class="prog-fill" style="width:${pct}%;background:${over?'var(--orange)':'var(--accent)'}"></div></div>
+      ${over?'<div class="mat-warn" style="margin-top:4px">⚠️ Kiekis viršytas!</div>':''}
+    </div>`;
+  }).join('');
+}
+
+async function renderSupWorkers(){
+  const {data:ow}=await sb.from('object_workers').select('worker_id').eq('object_id',supObjId);
+  const ids=(ow||[]).map(r=>r.worker_id);
+  const workers=allProfiles.filter(p=>ids.includes(p.id));
+  const {data:logs}=await sb.from('work_logs').select('worker_id,hrs').eq('object_id',supObjId).eq('log_date',todayStr());
+  const el=document.getElementById('supWorkers');
+  if(!workers.length){el.innerHTML='<div class="empty">Nėra priskirtų</div>';return;}
+  el.innerHTML=workers.map(u=>{
+    const hrs=(logs||[]).filter(l=>l.worker_id===u.id).reduce((s,l)=>s+l.hrs,0);
+    return `<div class="w-row">
+      <div class="avatar" style="background:${u.color};width:32px;height:32px;font-size:11px">${u.initials}</div>
+      <div class="w-info"><div class="w-name">${u.full_name}</div><div class="w-sub">${hrs>0?'🟢 Aktyvus':'⚪ Neprisijungęs'}</div></div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:${hrs>0?'var(--green)':'var(--muted)'}">${hrs>0?fmtH(hrs):'—'}</div>
+    </div>`;
+  }).join('');
+}
+
+async function renderSupTable(){
+  const {data:logs}=await sb.from('work_logs').select('*').eq('object_id',supObjId).eq('log_date',todayStr()).order('created_at',{ascending:false});
+  const {data:mats}=await sb.from('materials').select('work_type_id,qty').eq('object_id',supObjId);
+  const el=document.getElementById('supTable');
+  if(!logs?.length){el.innerHTML='<tr><td colspan="6" style="padding:20px;color:var(--muted);font-size:13px">Nėra įrašų</td></tr>';return;}
+  const deliveredByType={};
+  (mats||[]).forEach(m=>{if(!deliveredByType[m.work_type_id])deliveredByType[m.work_type_id]=0;deliveredByType[m.work_type_id]+=m.qty;});
+  const usedByType={};
+  logs.forEach(l=>{if(!usedByType[l.work_type_id])usedByType[l.work_type_id]=0;usedByType[l.work_type_id]+=l.qty;});
+  el.innerHTML=`<thead><tr><th>Darbuotojas</th><th>Darbas</th><th>Kiekis</th><th>Laikas</th><th>Pastabos</th><th></th></tr></thead><tbody>`+
+  logs.map(l=>{
+    const u=allProfiles.find(p=>p.id===l.worker_id);
+    const wt=workTypes.find(w=>w.id===l.work_type_id);
+    const d=deliveredByType[l.work_type_id]||0;
+    const over=d>0&&usedByType[l.work_type_id]>d;
+    return `<tr>
+      <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="background:${u?.color};width:24px;height:24px;font-size:9px">${u?.initials}</div>${u?.full_name?.split(' ')[0]}</div></td>
+      <td>${wt?.icon} ${wt?.name}</td>
+      <td class="${over?'warn-cell':'mono'}">${l.qty} ${wt?.unit}${over?' ⚠️':''}${l.corrected?' ✏️':''}</td>
+      <td class="mono">${fmtH(l.hrs)}</td>
+      <td style="color:var(--muted);font-size:12px">${l.notes||'—'}</td>
+      <td><button onclick="openEditLog('${l.id}')" style="background:var(--accent-dim);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;color:var(--accent);cursor:pointer;font-family:Inter,sans-serif;">Keisti</button></td>
+    </tr>`;
+  }).join('')+'</tbody>';
+}
+
+async function openEditLog(logId){
+  editingLogId=logId;
+  const {data:log}=await sb.from('work_logs').select('*').eq('id',logId).single();
+  const u=allProfiles.find(p=>p.id===log.worker_id);
+  const wt=workTypes.find(w=>w.id===log.work_type_id);
+  document.getElementById('editLogInfo').innerHTML=`<b>${u?.full_name}</b> · ${wt?.icon} ${wt?.name} · ${log.log_date}`;
+  document.getElementById('editQty').value=log.qty;
+  document.getElementById('editHrs').value=log.hrs;
+  document.getElementById('editNotes').value=log.notes||'';
+  openModal('editLogModal');
+}
+
+async function saveEditLog(){
+  const qty=parseFloat(document.getElementById('editQty').value);
+  const hrs=parseFloat(document.getElementById('editHrs').value);
+  const notes=document.getElementById('editNotes').value;
+  if(!qty||!hrs){showToast('Užpildykite laukus','err');return;}
+  const {error}=await sb.from('work_logs').update({qty,hrs,notes,corrected:true,corrected_by:currentProfile.id,corrected_at:new Date().toISOString()}).eq('id',editingLogId);
+  if(error){showToast('Klaida: '+error.message,'err');return;}
+  closeModal('editLogModal');showToast('✓ Įrašas pakoreguotas');
+  renderSupTable();
+}
+
+async function deleteLog(){
+  if(!confirm('Ištrinti šį įrašą?'))return;
+  await sb.from('work_logs').delete().eq('id',editingLogId);
+  closeModal('editLogModal');showToast('Įrašas ištrintas','warn-t');
+  renderSupContent();
+}
+
+async function openAssignWorker(){
+  const {data:ow}=await sb.from('object_workers').select('worker_id').eq('object_id',supObjId);
+  const assigned=(ow||[]).map(r=>r.worker_id);
+  const unassigned=allProfiles.filter(p=>p.role==='montuotojas'&&!assigned.includes(p.id));
+  document.getElementById('assignSel').innerHTML=unassigned.length?unassigned.map(u=>`<option value="${u.id}">${u.full_name}</option>`).join(''):'<option>Visi priskirti</option>';
+  openModal('assignModal');
+}
+async function assignWorker(){
+  const wid=document.getElementById('assignSel').value;
+  if(!wid)return;
+  await sb.from('object_workers').upsert({object_id:supObjId,worker_id:wid});
+  closeModal('assignModal');showToast('✓ Montuotojas priskirtas');
+  renderSupWorkers();
+}
+
+function openMatModal(){
+  document.getElementById('matTypeSel').innerHTML=workTypes.map(wt=>`<option value="${wt.id}">${wt.icon} ${wt.name}</option>`).join('');
+  updateMatUnit();
+  openModal('matModal');
+}
+function updateMatUnit(){
+  const tid=document.getElementById('matTypeSel').value;
+  document.getElementById('matUnitLbl').textContent=workTypes.find(w=>w.id===tid)?.unit||'—';
+}
+async function addMaterial(){
+  const typeId=document.getElementById('matTypeSel').value;
+  const qty=parseFloat(document.getElementById('matQty').value);
+  const notes=document.getElementById('matNotes').value;
+  if(!qty||qty<=0){showToast('Įveskite kiekį','err');return;}
+  await sb.from('materials').insert({object_id:supObjId,work_type_id:typeId,qty,notes,delivered_by:currentProfile.id});
+  closeModal('matModal');showToast('✓ Medžiagos įvestos');renderMatList();
+}
+
+async function openAddLogModal(){
+  const {data:ow}=await sb.from('object_workers').select('worker_id').eq('object_id',supObjId);
+  const ids=(ow||[]).map(r=>r.worker_id);
+  const workers=allProfiles.filter(p=>ids.includes(p.id));
+  document.getElementById('logWorkerSel').innerHTML=workers.map(u=>`<option value="${u.id}">${u.full_name}</option>`).join('');
+  document.getElementById('logTypeSel').innerHTML=workTypes.map(wt=>`<option value="${wt.id}">${wt.icon} ${wt.name}</option>`).join('');
+  document.getElementById('logDate').value=todayStr();
+  openModal('addLogModal');
+}
+async function submitLogForWorker(){
+  const wid=document.getElementById('logWorkerSel').value;
+  const tid=document.getElementById('logTypeSel').value;
+  const qty=parseFloat(document.getElementById('logQty').value);
+  const hrs=parseFloat(document.getElementById('logHrs').value);
+  const date=document.getElementById('logDate').value;
+  const notes=document.getElementById('logNotes').value;
+  if(!qty||!hrs){showToast('Užpildykite laukus','err');return;}
+  await sb.from('work_logs').insert({worker_id:wid,object_id:supObjId,work_type_id:tid,qty,hrs,log_date:date,notes,corrected:true,corrected_by:currentProfile.id});
+  closeModal('addLogModal');showToast('✓ Darbas įvestas');renderSupContent();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MANAGER VIEW
+// ═══════════════════════════════════════════════════════════════
+async function initManager(){
+  document.getElementById('managerView').classList.add('active');
+  document.getElementById('mgrDate').textContent=new Date().toLocaleDateString('lt-LT',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  if(allObjects.length) mgrObjId=allObjects[0].id;
+  renderMgrObjTabs();
+  await Promise.all([renderMgrStats(),renderMgrWorkTable(),renderMgrWorkerBreak(),renderMgrFeed()]);
+  renderMgrWorkersTab();
+  buildBonusMonths();
+}
+
+function mgrTab(tab,btn){
+  document.querySelectorAll('#managerView .tabs .tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('mgrObjects').style.display=tab==='objects'?'block':'none';
+  document.getElementById('mgrWorkers').style.display=tab==='workers'?'block':'none';
+  document.getElementById('mgrBonus').style.display=tab==='bonus'?'block':'none';
+  if(tab==='bonus') renderBonus();
+}
+
+function renderMgrObjTabs(){
+  document.getElementById('mgrObjTabs').innerHTML=allObjects.map(o=>`<button class="tab ${o.id===mgrObjId?'active':''}" onclick="selMgrObj('${o.id}')">${o.name}</button>`).join('');
+}
+async function selMgrObj(id){mgrObjId=id;renderMgrObjTabs();await Promise.all([renderMgrStats(),renderMgrWorkTable(),renderMgrWorkerBreak(),renderMgrFeed()]);}
+
+async function renderMgrStats(){
+  const {data:logs}=await sb.from('work_logs').select('*').eq('object_id',mgrObjId).eq('log_date',todayStr());
+  const factHrs=(logs||[]).reduce((s,l)=>s+l.hrs,0);
+  const normHrs=(logs||[]).reduce((s,l)=>s+(l.qty*(norms[l.work_type_id]||0)/60),0);
+  const workers=[...new Set((logs||[]).map(l=>l.worker_id))].length;
+  const kab=(logs||[]).filter(l=>l.work_type_id==='kabelis').reduce((s,l)=>s+l.qty,0);
+  document.getElementById('mgrStats').innerHTML=`
+    <div class="stat blue"><div class="stat-lbl">Faktas</div><div class="stat-val">${fmtH(factHrs)}</div><div class="stat-unit">faktinės val.</div></div>
+    <div class="stat green"><div class="stat-lbl">Norma</div><div class="stat-val">${fmtH(normHrs)}</div><div class="stat-unit">normat. val.</div></div>
+    <div class="stat orange"><div class="stat-lbl">Kabelis</div><div class="stat-val">${kab.toFixed(0)}</div><div class="stat-unit">metrų</div></div>
+    <div class="stat purple"><div class="stat-lbl">Darbuotojai</div><div class="stat-val">${workers}</div><div class="stat-unit">aktyvūs</div></div>`;
+}
+
+async function renderMgrWorkTable(){
+  const {data:logs}=await sb.from('work_logs').select('*').eq('object_id',mgrObjId).eq('log_date',todayStr());
+  const byType={};
+  (logs||[]).forEach(l=>{if(!byType[l.work_type_id])byType[l.work_type_id]={qty:0};byType[l.work_type_id].qty+=l.qty;});
+  const el=document.getElementById('mgrWorkTable');
+  const rows=Object.entries(byType).filter(([,v])=>v.qty>0);
+  if(!rows.length){el.innerHTML='<tr><td style="padding:20px;color:var(--muted);font-size:13px">Nėra duomenų</td></tr>';return;}
+  el.innerHTML='<thead><tr><th>Darbas</th><th>Kiekis</th><th>Norma val.</th></tr></thead><tbody>'+
+    rows.map(([tid,v])=>{const wt=workTypes.find(w=>w.id===tid);const nh=(v.qty*(norms[tid]||0)/60);return `<tr><td>${wt?.icon} ${wt?.name}</td><td class="mono">${v.qty.toFixed(1)} ${wt?.unit}</td><td class="mono">${fmtH(nh)}</td></tr>`;}).join('')+'</tbody>';
+}
+
+async function renderMgrWorkerBreak(){
+  const {data:logs}=await sb.from('work_logs').select('*').eq('object_id',mgrObjId).eq('log_date',todayStr());
+  const byW={};
+  (logs||[]).forEach(l=>{if(!byW[l.worker_id])byW[l.worker_id]={hrs:0,normHrs:0};byW[l.worker_id].hrs+=l.hrs;byW[l.worker_id].normHrs+=l.qty*(norms[l.work_type_id]||0)/60;});
+  const maxH=Math.max(...Object.values(byW).map(w=>w.hrs),1);
+  const el=document.getElementById('mgrWorkerBreak');
+  const entries=Object.entries(byW);
+  if(!entries.length){el.innerHTML='<div class="empty">Nėra duomenų</div>';return;}
+  el.innerHTML=entries.map(([uid,d])=>{
+    const u=allProfiles.find(p=>p.id===uid);
+    const eff=d.normHrs>0?Math.round(d.normHrs/d.hrs*100):100;
+    return `<div class="w-row">
+      <div class="avatar" style="background:${u?.color};width:32px;height:32px;font-size:11px">${u?.initials}</div>
+      <div class="w-info">
+        <div class="w-name">${u?.full_name}</div>
+        <div class="prog"><div class="prog-fill" style="width:${Math.min(100,d.hrs/maxH*100).toFixed(0)}%"></div></div>
+        <div class="w-sub">Efektyvumas: <b style="color:${eff>=100?'var(--green)':'var(--accent)'}">${eff}%</b></div>
+      </div>
+      <div class="mono">${fmtH(d.hrs)}</div>
+    </div>`;
+  }).join('');
+}
+
+async function renderMgrFeed(){
+  const {data:logs}=await sb.from('work_logs').select('*').eq('object_id',mgrObjId).eq('log_date',todayStr()).order('created_at',{ascending:false}).limit(20);
+  const el=document.getElementById('mgrFeed');
+  if(!logs?.length){el.innerHTML='<div class="empty">Nėra įrašų</div>';return;}
+  el.innerHTML=logs.map(l=>{
+    const u=allProfiles.find(p=>p.id===l.worker_id);
+    const wt=workTypes.find(w=>w.id===l.work_type_id);
+    return `<div class="log-item"><div class="log-icon">${wt?.icon}</div><div class="log-body"><div class="log-name">${u?.full_name} – ${wt?.name}</div><div class="log-meta">${l.qty} ${wt?.unit} · ${fmtH(l.hrs)}${l.notes?' · '+l.notes:''}</div></div></div>`;
+  }).join('');
+}
+
+async function renderMgrWorkersTab(){
+  const workers=allProfiles.filter(p=>p.role==='montuotojas');
+  const {data:todayLogs}=await sb.from('work_logs').select('worker_id,hrs').eq('log_date',todayStr());
+  const active=workers.filter(u=>(todayLogs||[]).some(l=>l.worker_id===u.id)).length;
+  document.getElementById('mgrWStats').innerHTML=`
+    <div class="stat blue"><div class="stat-lbl">Viso montuotojų</div><div class="stat-val">${workers.length}</div><div class="stat-unit">darbuotojų</div></div>
+    <div class="stat green"><div class="stat-lbl">Aktyvūs šiandien</div><div class="stat-val">${active}</div><div class="stat-unit">dirba</div></div>`;
+  document.getElementById('allWorkers').innerHTML=workers.map(u=>{
+    const hrs=(todayLogs||[]).filter(l=>l.worker_id===u.id).reduce((s,l)=>s+l.hrs,0);
+    const obj=allObjects.find(o=>allProfiles.find(p=>p.id===u.id));
+    return `<div class="w-row">
+      <div class="avatar" style="background:${u.color};width:36px;height:36px;font-size:12px">${u.initials}</div>
+      <div class="w-info"><div class="w-name">${u.full_name}</div><div class="w-sub">${hrs>0?'🟢 Aktyvus':'⚪ Neprisijungęs'}</div></div>
+      <div class="mono">${hrs>0?fmtH(hrs):'—'}</div>
+    </div>`;
+  }).join('');
+}
+
+// BONUS
+function buildBonusMonths(){
+  const sel=document.getElementById('bonusMonthSel');
+  const months=[];
+  for(let i=0;i<6;i++){const d=new Date();d.setMonth(d.getMonth()-i);months.push({val:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`,lbl:d.toLocaleDateString('lt-LT',{year:'numeric',month:'long'})});}
+  sel.innerHTML=months.map(m=>`<option value="${m.val}">${m.lbl}</option>`).join('');
+}
+
+async function renderBonus(){
+  const month=document.getElementById('bonusMonthSel').value;
+  const [y,m]=month.split('-');
+  const from=`${y}-${m}-01`;
+  const to=new Date(parseInt(y),parseInt(m),0).toISOString().split('T')[0];
+  const workers=allProfiles.filter(p=>p.role==='montuotojas');
+  const {data:logs}=await sb.from('work_logs').select('*').gte('log_date',from).lte('log_date',to);
+  const el=document.getElementById('bonusList');
+  if(!logs?.length){el.innerHTML='<div class="empty">Nėra duomenų šiam mėnesiui</div>';return;}
+  const workerData=workers.map(u=>{
+    const ul=(logs||[]).filter(l=>l.worker_id===u.id);
+    const factHrs=ul.reduce((s,l)=>s+l.hrs,0);
+    const normHrs=ul.reduce((s,l)=>s+(l.qty*(norms[l.work_type_id]||0)/60),0);
+    const saved=normHrs-factHrs;
+    const bonus=saved>0?parseFloat((saved*0.02).toFixed(2)):0;
+    return {u,factHrs,normHrs,saved,bonus};
+  }).filter(w=>w.factHrs>0).sort((a,b)=>b.bonus-a.bonus);
+  if(!workerData.length){el.innerHTML='<div class="empty">Nėra duomenų šiam mėnesiui</div>';return;}
+  el.innerHTML=workerData.map(({u,factHrs,normHrs,saved,bonus})=>`
+    <div class="bonus-worker-card">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="avatar" style="background:${u.color};width:40px;height:40px;font-size:13px">${u.initials}</div>
+        <div style="flex:1"><div style="font-size:14px;font-weight:700">${u.full_name}</div><div style="font-size:11px;color:var(--muted)">Mėnuo: ${new Date(month).toLocaleDateString('lt-LT',{year:'numeric',month:'long'})}</div></div>
+        ${bonus>0?`<div style="background:var(--green-dim);color:var(--green);padding:7px 14px;border-radius:8px;font-weight:800;font-size:14px">+${bonus}h</div>`:`<div style="color:var(--muted);font-size:12px;">Priedo nėra</div>`}
+      </div>
+      <div class="bonus-trio">
+        <div class="bonus-trio-item"><div class="bonus-trio-lbl">Faktas</div><div class="bonus-trio-val" style="color:var(--accent)">${fmtH(factHrs)}</div></div>
+        <div class="bonus-trio-item"><div class="bonus-trio-lbl">Norma</div><div class="bonus-trio-val" style="color:var(--green)">${fmtH(normHrs)}</div></div>
+        <div class="bonus-trio-item" style="background:${saved>0?'var(--green-dim)':'var(--panel2)'}"><div class="bonus-trio-lbl">Sutaupyta</div><div class="bonus-trio-val" style="color:${saved>0?'var(--green)':'var(--muted)'}">${saved>0?'+':''}${fmtH(Math.abs(saved))}</div></div>
+      </div>
+    </div>`).join('');
+}
+
+async function calcAndSaveBonus(){
+  await renderBonus();showToast('✓ Priedai apskaičiuoti');
+}
+
+// ADD OBJECT
+async function openAddObject(){
+  const sups=allProfiles.filter(p=>p.role==='darbo-vadovas');
+  document.getElementById('newObjSup').innerHTML=sups.map(u=>`<option value="${u.id}">${u.full_name}</option>`).join('');
+  openModal('addObjModal');
+}
+async function addObject(){
+  const name=document.getElementById('newObjName').value.trim();
+  const addr=document.getElementById('newObjAddr').value.trim();
+  const lat=parseFloat(document.getElementById('newObjLat').value)||null;
+  const lng=parseFloat(document.getElementById('newObjLng').value)||null;
+  const supId=document.getElementById('newObjSup').value;
+  if(!name){showToast('Įveskite pavadinimą','err');return;}
+  const {data:obj,error}=await sb.from('objects').insert({name,address:addr,lat,lng,created_by:currentProfile.id}).select().single();
+  if(error){showToast('Klaida: '+error.message,'err');return;}
+  if(supId) await sb.from('object_supervisors').insert({object_id:obj.id,supervisor_id:supId});
+  await loadGlobalData();
+  mgrObjId=obj.id;
+  closeModal('addObjModal');showToast('✓ Objektas sukurtas');
+  renderMgrObjTabs();renderMgrStats();
+}
+
+// ADD USER (admin creates user via Supabase admin API via edge function in production)
+// In this version we create via signup with auto-confirm
+async function openAddUser(){openModal('addUserModal');}
+async function addUser(){
+  const name=document.getElementById('newUserName').value.trim();
+  const email=document.getElementById('newUserEmail').value.trim();
+  const pass=document.getElementById('newUserPass').value;
+  const role=document.getElementById('newUserRole').value;
+  if(!name||!email||!pass){showToast('Užpildykite visus laukus','err');return;}
+  if(pass.length<8){showToast('Slaptažodis min. 8 simboliai','err');return;}
+  const btn=document.getElementById('addUserBtn');btn.disabled=true;btn.textContent='Kuriama...';
+  const initials=name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  const colors=['#2E7EC7','#16A34A','#D97706','#DC2626','#7C3AED','#0891B2','#BE185D','#1D4ED8','#0E7490','#15803D'];
+  const color=colors[Math.floor(Math.random()*colors.length)];
+  const {data,error}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:name,role,initials,color}}});
+  btn.disabled=false;btn.textContent='Sukurti paskyrą';
+  if(error){showToast('Klaida: '+error.message,'err');return;}
+  await loadGlobalData();
+  closeModal('addUserModal');
+  showToast(`✓ Paskyra sukurta. Darbuotojas turi patvirtinti el. paštą.`);
+  renderMgrWorkersTab();
+}
+
+// NORMS
+async function openNorms(){
+  document.getElementById('normsList').innerHTML=workTypes.map(wt=>`
+    <div class="norm-row">
+      <div class="norm-name">${wt.icon} ${wt.name}</div>
+      <input class="norm-input" type="number" id="norm_${wt.id}" value="${norms[wt.id]||0}" min="0" step="0.5">
+      <div class="norm-unit">min/${wt.unit}</div>
+    </div>`).join('');
+  openModal('normsModal');
+}
+async function saveNorms(){
+  for(const wt of workTypes){
+    const v=parseFloat(document.getElementById('norm_'+wt.id).value);
+    if(!isNaN(v)){
+      await sb.from('norms').upsert({work_type_id:wt.id,minutes_per_unit:v,updated_by:currentProfile.id,updated_at:new Date().toISOString()});
+      norms[wt.id]=v;
+    }
+  }
+  closeModal('normsModal');showToast('✓ Normatyvai išsaugoti');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT - Check session
+// ═══════════════════════════════════════════════════════════════
+(async()=>{
+  const {data:{session}}=await sb.auth.getSession();
+  if(session?.user) await afterLogin(session.user);
+})();
+</script>
+</body>
+</html>
