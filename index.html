@@ -330,11 +330,18 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
     </div>
     <div id="mgrBonus" style="display:none">
       <div style="background:var(--accent-dim);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px;font-size:13px;color:var(--accent);">
-        💡 Priedas = (Normatyvinis laikas − Faktinis laikas) × 2%. Rodoma valandomis. Vadovas nustato finansinę išraišką.
+        💡 Priedas = (Normatyvinis laikas − Faktinis laikas) × <b id="bonusPctDisplay">2</b>%. Rodoma valandomis. Vadovas nustato finansinę išraišką.
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
         <select id="bonusMonthSel" style="background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--text);outline:none;font-family:'Inter',sans-serif;" onchange="renderBonus()"></select>
-        <button class="btn btn-secondary btn-sm" onclick="calcAndSaveBonus()">Skaičiuoti mėnesį</button>
+        <div style="display:flex;align-items:center;gap:6px;background:var(--panel);border:1.5px solid var(--border);border-radius:8px;padding:6px 12px;">
+          <span style="font-size:12px;color:var(--muted);font-weight:600;">Priedo %:</span>
+          <input type="number" id="bonusPctInput" value="2" min="0.1" max="100" step="0.1"
+            style="width:60px;background:transparent;border:none;outline:none;font-size:14px;font-weight:700;color:var(--accent);font-family:'JetBrains Mono',monospace;text-align:center;">
+          <span style="font-size:13px;color:var(--muted);">%</span>
+          <button onclick="saveBonusPct()" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">Išsaugoti</button>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="renderBonus()">🔄 Atnaujinti</button>
       </div>
       <div id="bonusList"></div>
     </div>
@@ -1009,6 +1016,7 @@ async function initManager(){
   await Promise.all([renderMgrStats(),renderMgrWorkTable(),renderMgrWorkerBreak(),renderMgrFeed(),renderMgrObjWorkers()]);
   renderMgrWorkersTab();
   buildBonusMonths();
+  await loadBonusPct();
 }
 
 function mgrTab(tab,btn){
@@ -1131,7 +1139,7 @@ async function renderBonus(){
     const factHrs=ul.reduce((s,l)=>s+l.hrs,0);
     const normHrs=ul.reduce((s,l)=>s+(l.qty*(norms[l.work_type_id]||0)/60),0);
     const saved=normHrs-factHrs;
-    const bonus=saved>0?parseFloat((saved*0.02).toFixed(2)):0;
+    const bonus=saved>0?parseFloat((saved*(bonusPct/100)).toFixed(2)):0;
     return {u,factHrs,normHrs,saved,bonus};
   }).filter(w=>w.factHrs>0).sort((a,b)=>b.bonus-a.bonus);
   if(!workerData.length){el.innerHTML='<div class="empty">Nėra duomenų šiam mėnesiui</div>';return;}
@@ -1140,7 +1148,7 @@ async function renderBonus(){
       <div style="display:flex;align-items:center;gap:12px">
         <div class="avatar" style="background:${u.color};width:40px;height:40px;font-size:13px">${u.initials}</div>
         <div style="flex:1"><div style="font-size:14px;font-weight:700">${u.full_name}</div><div style="font-size:11px;color:var(--muted)">Mėnuo: ${new Date(month).toLocaleDateString('lt-LT',{year:'numeric',month:'long'})}</div></div>
-        ${bonus>0?`<div style="background:var(--green-dim);color:var(--green);padding:7px 14px;border-radius:8px;font-weight:800;font-size:14px">+${bonus}h</div>`:`<div style="color:var(--muted);font-size:12px;">Priedo nėra</div>`}
+        ${bonus>0?`<div style="background:var(--green-dim);color:var(--green);padding:7px 14px;border-radius:8px;font-weight:800;font-size:14px;text-align:center"><div>+${bonus}h</div><div style="font-size:10px;opacity:.75;margin-top:2px">${bonusPct}% premija</div></div>`:`<div style="color:var(--muted);font-size:12px;">Priedo nėra</div>`}
       </div>
       <div class="bonus-trio">
         <div class="bonus-trio-item"><div class="bonus-trio-lbl">Faktas</div><div class="bonus-trio-val" style="color:var(--accent)">${fmtH(factHrs)}</div></div>
@@ -1152,6 +1160,25 @@ async function renderBonus(){
 
 async function calcAndSaveBonus(){
   await renderBonus();showToast('✓ Priedai apskaičiuoti');
+}
+
+async function loadBonusPct(){
+  const {data}=await sb.from('norms').select('minutes_per_unit').eq('work_type_id','__bonus_pct__').maybeSingle();
+  if(data) bonusPct=data.minutes_per_unit;
+  const input=document.getElementById('bonusPctInput');
+  if(input) input.value=bonusPct;
+  const display=document.getElementById('bonusPctDisplay');
+  if(display) display.textContent=bonusPct;
+}
+
+async function saveBonusPct(){
+  const val=parseFloat(document.getElementById('bonusPctInput').value);
+  if(isNaN(val)||val<=0||val>100){showToast('Įveskite teisingą procentą (0.1–100)','err');return;}
+  bonusPct=val;
+  await sb.from('norms').upsert({work_type_id:'__bonus_pct__',minutes_per_unit:val,updated_by:currentProfile.id,updated_at:new Date().toISOString()});
+  document.getElementById('bonusPctDisplay').textContent=val;
+  showToast(`✓ Premijos dydis išsaugotas: ${val}%`);
+  renderBonus();
 }
 
 
@@ -1204,6 +1231,7 @@ async function removeMgrWorker(wid){
 
 
 let currentDetailLog = null;
+let bonusPct = 2;
 
 async function openLogDetail(logId, canEdit=false){
   const {data:log}=await sb.from('work_logs').select('*').eq('id',logId).single();
