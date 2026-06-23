@@ -164,6 +164,50 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 .photo-fullscreen{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:500;display:flex;align-items:center;justify-content:center;cursor:pointer;}
 .photo-fullscreen img{max-width:95vw;max-height:95vh;border-radius:8px;}
 
+
+/* WORK SELECTOR */
+.ws-screen { display:none; }
+.ws-screen.active { display:block; }
+.ws-back { display:flex;align-items:center;gap:8px;background:none;border:none;color:var(--accent);font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;padding:0;margin-bottom:14px; }
+.ws-search { width:100%;background:var(--panel2);border:1.5px solid var(--border);border-radius:10px;padding:11px 14px 11px 38px;font-size:14px;color:var(--text);font-family:'Inter',sans-serif;outline:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237A9BBB' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:12px center;margin-bottom:12px; }
+.ws-search:focus { border-color:var(--accent); }
+.ws-section-lbl { font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin:14px 0 8px; }
+.ws-cat-grid { display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px; }
+.ws-cat-btn { display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--panel);border:1.5px solid var(--border);border-radius:10px;cursor:pointer;font-family:'Inter',sans-serif;color:var(--text);transition:border-color .15s;text-align:left; }
+.ws-cat-btn:hover { border-color:var(--accent); }
+.ws-cat-icon { font-size:20px;flex-shrink:0; }
+.ws-cat-name { font-size:12px;font-weight:600;line-height:1.3; }
+.ws-cat-count { font-size:10px;color:var(--muted);margin-top:1px; }
+.ws-item { display:flex;align-items:center;gap:10px;padding:11px 12px;background:var(--panel);border:1.5px solid var(--border);border-radius:9px;cursor:pointer;margin-bottom:6px;transition:border-color .15s; }
+.ws-item:hover { border-color:var(--accent); }
+.ws-item.sel { border-color:var(--accent);background:var(--accent-dim); }
+.ws-item-icon { font-size:18px;flex-shrink:0; }
+.ws-item-name { font-size:13px;font-weight:600;flex:1;line-height:1.3; }
+.ws-item-norm { font-size:11px;color:var(--muted);flex-shrink:0; }
+.fav-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:4px; }
+.fav-btn { display:flex;flex-direction:column;align-items:center;padding:10px 6px;background:var(--panel);border:1.5px solid var(--border);border-radius:9px;cursor:pointer;font-family:'Inter',sans-serif;transition:border-color .15s;text-align:center; }
+.fav-btn:hover { border-color:var(--accent); }
+.fav-icon { font-size:20px;margin-bottom:3px; }
+.fav-name { font-size:10px;font-weight:600;color:var(--text);line-height:1.2; }
+.fav-norm { font-size:9px;color:var(--muted);margin-top:2px; }
+.repeat-btn { display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--green-dim);border:1.5px solid #16A34A30;border-radius:10px;cursor:pointer;width:100%;font-family:'Inter',sans-serif;margin-bottom:8px; }
+.repeat-btn-icon { font-size:20px; }
+.repeat-btn-text { flex:1; }
+.repeat-btn-lbl { font-size:12px;font-weight:700;color:var(--green); }
+.repeat-btn-sub { font-size:11px;color:var(--muted);margin-top:1px; }
+/* Cable picker */
+.cable-step { margin-bottom:14px; }
+.cable-step-lbl { font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px; }
+.cable-chips { display:flex;flex-wrap:wrap;gap:6px; }
+.cable-chip { padding:7px 14px;background:var(--panel2);border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s;font-family:'Inter',sans-serif; }
+.cable-chip:hover,.cable-chip.sel { background:var(--accent-dim);border-color:var(--accent);color:var(--accent); }
+/* Selected work type display */
+.wt-selected { display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--accent-dim);border:1.5px solid var(--accent);border-radius:10px;margin-bottom:12px;cursor:pointer; }
+.wt-sel-icon { font-size:22px; }
+.wt-sel-name { flex:1;font-size:13px;font-weight:700;color:var(--accent); }
+.wt-sel-norm { font-size:11px;color:var(--muted); }
+.wt-sel-change { font-size:11px;font-weight:600;color:var(--accent);background:var(--panel);padding:4px 10px;border-radius:6px; }
+
 /* MODAL */
 .overlay{display:none;position:fixed;inset:0;background:rgba(15,30,50,.55);z-index:200;align-items:center;justify-content:center;padding:16px;}
 .overlay.open{display:flex;}
@@ -226,6 +270,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
   <div class="page">
     <div class="gps-bar off" id="gpsBar"><div class="gps-dot"></div><span id="gpsText">GPS tikrinama...</span></div>
 
+    <!-- TIMER -->
     <div id="timerCard" style="display:none">
       <div class="timer-card">
         <div class="timer-lbl">Darbo laikas</div>
@@ -235,6 +280,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
       </div>
     </div>
 
+    <!-- START -->
     <div id="startCard">
       <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Pradėti darbą</div>
       <div class="card">
@@ -243,15 +289,102 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
       </div>
     </div>
 
+    <!-- WORK SELECTOR (multi-screen) -->
     <div id="logWorkCard" style="display:none">
-      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Įvesti atliktą darbą</div>
-      <div class="card">
-        <div class="form-row"><label>Darbo tipas</label><div class="wt-grid" id="wtGrid"></div></div>
-        <div class="form-row two-col">
-          <div><label>Kiekis</label><input type="number" id="wQty" placeholder="0" min="0" step="0.1" oninput="checkMatWarn()"></div>
-          <div><label>Vienetas</label><div style="background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:11px 13px;font-size:14px;color:var(--muted)" id="wUnit">—</div></div>
+
+      <!-- SCREEN 1: Main selector -->
+      <div class="ws-screen active" id="wsMain">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Pasirinkti darbą</div>
+
+        <!-- Repeat last -->
+        <div id="repeatLastBtn" style="display:none" onclick="repeatLast()">
+          <div class="repeat-btn">
+            <div class="repeat-btn-icon">🔄</div>
+            <div class="repeat-btn-text">
+              <div class="repeat-btn-lbl">Pakartoti paskutinį darbą</div>
+              <div class="repeat-btn-sub" id="repeatLastSub"></div>
+            </div>
+          </div>
         </div>
+
+        <!-- Favorites -->
+        <div id="favSection" style="display:none">
+          <div class="ws-section-lbl">⭐ Dažniausi mano darbai</div>
+          <div class="fav-grid" id="favGrid"></div>
+        </div>
+
+        <!-- Search -->
+        <div class="ws-section-lbl">🔍 Paieška arba kategorija</div>
+        <input class="ws-search" id="wsSearch" placeholder="Ieškoti darbo..." oninput="wsSearchInput(this.value)">
+        <div id="wsSearchResults" style="display:none"></div>
+
+        <!-- Categories -->
+        <div id="wsCatGrid" class="ws-cat-grid"></div>
+      </div>
+
+      <!-- SCREEN 2: Category items -->
+      <div class="ws-screen" id="wsCatItems">
+        <button class="ws-back" onclick="wsBack('wsMain')">← Atgal</button>
+        <div style="font-size:14px;font-weight:800;margin-bottom:12px" id="wsCatTitle"></div>
+        <input class="ws-search" id="wsCatSearch" placeholder="Ieškoti šioje kategorijoje..." oninput="wsCatSearchInput(this.value)">
+        <div id="wsCatList"></div>
+      </div>
+
+      <!-- SCREEN 3: Cable picker -->
+      <div class="ws-screen" id="wsCable">
+        <button class="ws-back" onclick="wsBack('wsMain')">← Atgal</button>
+        <div style="font-size:14px;font-weight:800;margin-bottom:14px">🔌 Pasirinkti kabelį</div>
+        <div class="cable-step">
+          <div class="cable-step-lbl">1. Žilų skaičius</div>
+          <div class="cable-chips" id="cableCores"></div>
+        </div>
+        <div class="cable-step" id="cableSectionStep" style="display:none">
+          <div class="cable-step-lbl">2. Skerspjūvis (mm²)</div>
+          <div class="cable-chips" id="cableSections"></div>
+        </div>
+        <div class="cable-step" id="cableSubtypeStep" style="display:none">
+          <div class="cable-step-lbl">3. Tipas</div>
+          <div class="cable-chips" id="cableSubtypes"></div>
+        </div>
+      </div>
+
+      <!-- SCREEN 4: Entry form -->
+      <div class="ws-screen" id="wsForm">
+        <button class="ws-back" onclick="wsBackToSelector()">← Pakeisti darbą</button>
+
+        <!-- Selected work type display -->
+        <div class="wt-selected" onclick="wsBackToSelector()">
+          <div class="wt-sel-icon" id="selWtIcon"></div>
+          <div>
+            <div class="wt-sel-name" id="selWtName"></div>
+            <div class="wt-sel-norm" id="selWtNorm"></div>
+          </div>
+          <div class="wt-sel-change">Keisti</div>
+        </div>
+
+        <!-- Quantity (hidden for time_only) -->
+        <div id="qtySection" class="form-row">
+          <label>Kiekis</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="number" id="wQty" placeholder="0" min="0" step="0.1" style="flex:1" oninput="checkMatWarn()">
+            <div style="background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:11px 14px;font-size:14px;font-weight:600;color:var(--accent);min-width:50px;text-align:center" id="wUnit">—</div>
+          </div>
+        </div>
+
+        <!-- Hours (for time_only) -->
+        <div id="hrsSection" class="form-row" style="display:none">
+          <label>Sugaištas laikas (val.)</label>
+          <input type="number" id="wHrsManual" placeholder="pvz. 2.5" min="0" step="0.5">
+        </div>
+
+        <!-- Extra field (skydo dydis) -->
+        <div id="extraSection" class="form-row" style="display:none">
+          <label id="extraLabel">Papildoma informacija</label>
+          <input type="text" id="wExtra" placeholder="">
+        </div>
+
         <div id="matWarnInline" style="display:none" class="mat-warn">⚠️ <span id="matWarnText"></span></div>
+
         <div class="form-row"><label>Kolegos (jei dirbote kartu)</label><div class="col-grid" id="colGrid"></div></div>
         <div class="form-row"><label>Pastabos</label><input type="text" id="wNotes" placeholder="Neprivaloma..."></div>
         <div class="form-row">
@@ -263,9 +396,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
         </div>
         <button class="btn btn-primary btn-full" onclick="submitLog()">✓ Išsaugoti darbą</button>
       </div>
-    </div>
 
-    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Šiandien įrašyta</div>
+    </div><!-- end logWorkCard -->
+
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;margin-top:4px;">Šiandien įrašyta</div>
     <div class="card" id="todayLog"><div class="empty">Dar nėra įrašų</div></div>
   </div>
 </div>
@@ -618,9 +752,32 @@ async function loadGlobalData(){
 // ═══════════════════════════════════════════════════════════════
 // WORKER VIEW
 // ═══════════════════════════════════════════════════════════════
+let lastLog = null;
+let currentCategory = null;
+let cableSelectedCores = null;
+let cableSelectedSection = null;
+let allCableTypes = [];
+
+// Category definitions
+const CATEGORIES = [
+  {name:'Kabeliai', icon:'🔌', special:'cable'},
+  {name:'Rozetės / Jungikliai', icon:'🔲'},
+  {name:'Kanalai / Loviai', icon:'📦'},
+  {name:'Šviestuvai', icon:'💡'},
+  {name:'Apsauginė signalizacija', icon:'🚨'},
+  {name:'Gaisrinė signalizacija', icon:'🔥'},
+  {name:'Elektroniniai ryšiai', icon:'🌐'},
+  {name:'Įgarsinimas / Praėjimo kontrolė', icon:'🎵'},
+  {name:'Skydeliai / Jungikliai', icon:'⚡'},
+  {name:'Gofra / Vamzdeliai', icon:'🔵'},
+  {name:'Tranšėjos', icon:'⛏️'},
+  {name:'Žaibosauga / Įžeminimas', icon:'〰️'},
+  {name:'Kiti darbai', icon:'🔧'},
+  {name:'Demontažas', icon:'🗑️'},
+];
+
 async function initWorker(){
   document.getElementById('workerView').classList.add('active');
-  // Load assigned objects
   const {data:ow} = await sb.from('object_workers').select('object_id').eq('worker_id',currentProfile.id);
   const myObjIds = (ow||[]).map(r=>r.object_id);
   myObjects = allObjects.filter(o=>myObjIds.includes(o.id));
@@ -628,9 +785,10 @@ async function initWorker(){
   sel.innerHTML = myObjects.length
     ? myObjects.map(o=>`<option value="${o.id}">${o.name}</option>`).join('')
     : '<option value="">Nepriskirtas prie objektų</option>';
-  buildWTGrid();
+  buildCatGrid();
+  await loadFavorites();
+  await loadLastLog();
   initGPS();
-  // Check for active session
   const {data:sess} = await sb.from('work_sessions').select('*').eq('worker_id',currentProfile.id).is('ended_at',null).maybeSingle();
   if(sess){
     activeSession=sess; activeObjId=sess.object_id;
@@ -646,31 +804,228 @@ async function initWorker(){
   renderTodayLog();
 }
 
-function buildWTGrid(){
-  document.getElementById('wtGrid').innerHTML=workTypes.map(wt=>`
-    <div class="wt-btn" onclick="selWT('${wt.id}')" id="wt_${wt.id}">
-      <div class="wt-icon">${wt.icon}</div>
-      <div class="wt-name">${wt.name}</div>
-      <div class="wt-unit">${wt.unit}</div>
-    </div>`).join('');
+function buildCatGrid(){
+  const grid = document.getElementById('wsCatGrid');
+  grid.innerHTML = CATEGORIES.map(cat => {
+    const count = workTypes.filter(w=>w.category===cat.name).length;
+    return `<button class="ws-cat-btn" onclick="openCategory('${cat.name}','${cat.special||''}')">
+      <div class="ws-cat-icon">${cat.icon}</div>
+      <div>
+        <div class="ws-cat-name">${cat.name}</div>
+        <div class="ws-cat-count">${count} darbų</div>
+      </div>
+    </button>`;
+  }).join('');
 }
 
+async function loadFavorites(){
+  const {data:favs} = await sb.from('worker_favorites')
+    .select('work_type_id,use_count')
+    .eq('worker_id',currentProfile.id)
+    .order('use_count',{ascending:false})
+    .limit(6);
+  const favSection = document.getElementById('favSection');
+  const favGrid = document.getElementById('favGrid');
+  if(!favs?.length){ favSection.style.display='none'; return; }
+  favSection.style.display='block';
+  favGrid.innerHTML = favs.map(f=>{
+    const wt = workTypes.find(w=>w.id===f.work_type_id);
+    if(!wt) return '';
+    const norm = norms[wt.id];
+    return `<div class="fav-btn" onclick="selectWT('${wt.id}')">
+      <div class="fav-icon">${wt.icon}</div>
+      <div class="fav-name">${wt.name.length>22?wt.name.slice(0,22)+'…':wt.name}</div>
+      <div class="fav-norm">${norm?norm+' min/'+wt.unit:'tik laikas'}</div>
+    </div>`;
+  }).join('');
+}
+
+async function loadLastLog(){
+  const {data:logs} = await sb.from('work_logs')
+    .select('*').eq('worker_id',currentProfile.id)
+    .order('created_at',{ascending:false}).limit(1);
+  const btn = document.getElementById('repeatLastBtn');
+  const sub = document.getElementById('repeatLastSub');
+  if(!logs?.length){ btn.style.display='none'; return; }
+  lastLog = logs[0];
+  const wt = workTypes.find(w=>w.id===lastLog.work_type_id);
+  if(!wt){ btn.style.display='none'; return; }
+  btn.style.display='block';
+  sub.textContent = `${wt.icon} ${wt.name} · ${lastLog.qty} ${wt.unit}`;
+}
+
+function repeatLast(){
+  if(!lastLog) return;
+  const wt = workTypes.find(w=>w.id===lastLog.work_type_id);
+  if(!wt) return;
+  selectWT(wt.id);
+  setTimeout(()=>{
+    document.getElementById('wQty').value = lastLog.qty;
+    document.getElementById('wNotes').value = lastLog.notes||'';
+  }, 100);
+}
+
+// ── Category / search ─────────────────────────────────────────
+function openCategory(catName, special=''){
+  if(special==='cable'){ wsShow('wsCable'); buildCablePicker(); return; }
+  currentCategory = catName;
+  const cat = CATEGORIES.find(c=>c.name===catName);
+  document.getElementById('wsCatTitle').textContent = (cat?.icon||'') + ' ' + catName;
+  document.getElementById('wsCatSearch').value = '';
+  renderCatList(workTypes.filter(w=>w.category===catName));
+  wsShow('wsCatItems');
+}
+
+function renderCatList(items){
+  document.getElementById('wsCatList').innerHTML = items.map(wt=>{
+    const norm = norms[wt.id];
+    return `<div class="ws-item" onclick="selectWT('${wt.id}')">
+      <div class="ws-item-icon">${wt.icon}</div>
+      <div class="ws-item-name">${wt.name}</div>
+      <div class="ws-item-norm">${wt.time_only?'tik laikas':norm?(norm+' min/'+wt.unit):'—'}</div>
+    </div>`;
+  }).join('');
+}
+
+function wsCatSearchInput(q){
+  const items = workTypes.filter(w=>w.category===currentCategory&&w.name.toLowerCase().includes(q.toLowerCase()));
+  renderCatList(items);
+}
+
+function wsSearchInput(q){
+  const res = document.getElementById('wsSearchResults');
+  const catGrid = document.getElementById('wsCatGrid');
+  const favSec = document.getElementById('favSection');
+  const repeatBtn = document.getElementById('repeatLastBtn');
+  if(!q){ res.style.display='none'; catGrid.style.display=''; favSec.style.display=favSec._wasVisible?'block':'none'; repeatBtn.style.display=repeatBtn._wasVisible?'block':'none'; return; }
+  catGrid.style.display='none';
+  favSec.style.display='none';
+  repeatBtn.style.display='none';
+  const found = workTypes.filter(w=>w.name.toLowerCase().includes(q.toLowerCase())).slice(0,20);
+  if(!found.length){ res.innerHTML='<div class="empty">Nieko nerasta</div>'; res.style.display='block'; return; }
+  res.innerHTML = found.map(wt=>{
+    const norm = norms[wt.id];
+    const cat = CATEGORIES.find(c=>c.name===wt.category);
+    return `<div class="ws-item" onclick="selectWT('${wt.id}')">
+      <div class="ws-item-icon">${wt.icon}</div>
+      <div style="flex:1">
+        <div class="ws-item-name">${wt.name}</div>
+        <div style="font-size:10px;color:var(--muted)">${cat?.icon||''} ${wt.category}</div>
+      </div>
+      <div class="ws-item-norm">${wt.time_only?'tik laikas':norm?(norm+' min/'+wt.unit):'—'}</div>
+    </div>`;
+  }).join('');
+  res.style.display='block';
+}
+
+// ── Cable picker ──────────────────────────────────────────────
+function buildCablePicker(){
+  allCableTypes = workTypes.filter(w=>w.category==='Kabeliai');
+  cableSelectedCores = null; cableSelectedSection = null;
+  // Cores
+  const coreSet = [...new Set(allCableTypes.map(w=>{
+    const m = w.name.match(/^Kabelis (\d+)x/);
+    return m?m[1]:null;
+  }).filter(Boolean))].sort((a,b)=>parseInt(a)-parseInt(b));
+  // Special types (FTP, UTP etc - no core pattern)
+  const special = allCableTypes.filter(w=>!w.name.match(/^Kabelis \d+x/));
+
+  document.getElementById('cableCores').innerHTML =
+    coreSet.map(c=>`<div class="cable-chip" onclick="selectCores('${c}')" id="core_${c}">${c} žilų</div>`).join('') +
+    `<div class="cable-chip" onclick="openCategory('Kabeliai','special_list')">Kiti (gaisriniai, ryšių...)</div>`;
+  document.getElementById('cableSectionStep').style.display='none';
+  document.getElementById('cableSubtypeStep').style.display='none';
+}
+
+function selectCores(cores){
+  cableSelectedCores = cores;
+  document.querySelectorAll('#cableCores .cable-chip').forEach(c=>c.classList.remove('sel'));
+  document.getElementById('core_'+cores)?.classList.add('sel');
+  // Sections for this core count
+  const matching = allCableTypes.filter(w=>{
+    const m = w.name.match(/^Kabelis (?:Cu |Al )?(\d+)x([\d.]+)/);
+    return m && m[1]===cores;
+  });
+  const sections = [...new Set(matching.map(w=>{
+    const m = w.name.match(/^Kabelis (?:Cu |Al )?\d+x([\d.]+)/);
+    return m?m[1]:null;
+  }).filter(Boolean))].sort((a,b)=>parseFloat(a)-parseFloat(b));
+  document.getElementById('cableSections').innerHTML = sections.map(s=>
+    `<div class="cable-chip" onclick="selectSection('${s}')" id="sec_${s}">${s}</div>`).join('');
+  document.getElementById('cableSectionStep').style.display='block';
+  document.getElementById('cableSubtypeStep').style.display='none';
+  cableSelectedSection = null;
+}
+
+function selectSection(section){
+  cableSelectedSection = section;
+  document.querySelectorAll('#cableSections .cable-chip').forEach(c=>c.classList.remove('sel'));
+  document.getElementById('sec_'+section)?.classList.add('sel');
+  // Check if subtypes exist
+  const matching = allCableTypes.filter(w=>{
+    const m = w.name.match(/^Kabelis (?:Cu |Al )?(\d+)x([\d.]+)/);
+    return m && m[1]===cableSelectedCores && m[2]===section;
+  });
+  if(matching.length===1){ selectWT(matching[0].id); return; }
+  // Multiple subtypes
+  const subtypes = matching.map(w=>{
+    if(w.name.includes('tranšėja')) return {id:w.id,label:'Tranšėja'};
+    if(w.name.includes('Cu')) return {id:w.id,label:'Cu (trasose)'};
+    if(w.name.includes('Al')) return {id:w.id,label:'Al (trasose)'};
+    return {id:w.id,label:'Standartinis'};
+  });
+  document.getElementById('cableSubtypes').innerHTML = subtypes.map(s=>
+    `<div class="cable-chip" onclick="selectWT('${s.id}')">${s.label}</div>`).join('');
+  document.getElementById('cableSubtypeStep').style.display='block';
+}
+
+// ── Select work type ──────────────────────────────────────────
+function selectWT(id){
+  selectedWT = workTypes.find(w=>w.id===id);
+  if(!selectedWT) return;
+  // Update form display
+  document.getElementById('selWtIcon').textContent = selectedWT.icon;
+  document.getElementById('selWtName').textContent = selectedWT.name;
+  const norm = norms[selectedWT.id];
+  document.getElementById('selWtNorm').textContent = selectedWT.time_only
+    ? 'Įvesti tik laiką (valandomis)'
+    : norm ? `Norma: ${norm} min/${selectedWT.unit}` : 'Normos nėra';
+  document.getElementById('wUnit').textContent = selectedWT.unit;
+  // Toggle sections
+  const isTimeOnly = selectedWT.time_only;
+  document.getElementById('qtySection').style.display = isTimeOnly ? 'none' : 'block';
+  document.getElementById('hrsSection').style.display = isTimeOnly ? 'block' : 'none';
+  // Extra field
+  const extraSec = document.getElementById('extraSection');
+  if(selectedWT.extra_field==='skydo_dydis'){
+    extraSec.style.display='block';
+    document.getElementById('extraLabel').textContent='Skydo dydis (moduliais)';
+    document.getElementById('wExtra').placeholder='pvz. 36 mod.';
+  } else { extraSec.style.display='none'; }
+  document.getElementById('wQty').value='';
+  document.getElementById('wHrsManual').value='';
+  document.getElementById('wExtra').value='';
+  document.getElementById('matWarnInline').style.display='none';
+  document.getElementById('wsSearch').value='';
+  wsShow('wsForm');
+}
+
+function wsShow(screenId){
+  document.querySelectorAll('.ws-screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(screenId).classList.add('active');
+}
+function wsBack(to){ wsShow(to); }
+function wsBackToSelector(){ wsShow('wsMain'); selectedWT=null; }
+
+// ── Build colleague grid ──────────────────────────────────────
 async function buildColGrid(){
   const {data:ow} = await sb.from('object_workers').select('worker_id').eq('object_id',activeObjId);
   const ids=(ow||[]).map(r=>r.worker_id).filter(id=>id!==currentProfile.id);
   const colleagues=allProfiles.filter(p=>ids.includes(p.id));
   selectedColleagues=[];
   document.getElementById('colGrid').innerHTML=colleagues.length
-    ?colleagues.map(u=>`<div class="col-chip" onclick="togCol(${JSON.stringify(u.id)},this)" id="cc_${u.id}"><div class="mini-av" style="background:${u.color}">${u.initials}</div>${u.full_name.split(' ')[0]}</div>`).join('')
+    ?colleagues.map(u=>`<div class="col-chip" onclick="togCol('${u.id}',this)" id="cc_${u.id}"><div class="mini-av" style="background:${u.color}">${u.initials}</div>${u.full_name.split(' ')[0]}</div>`).join('')
     :'<span style="font-size:12px;color:var(--muted)">Nėra kolegų</span>';
-}
-
-function selWT(id){
-  selectedWT=workTypes.find(w=>w.id===id);
-  document.querySelectorAll('.wt-btn').forEach(b=>b.classList.remove('sel'));
-  document.getElementById('wt_'+id).classList.add('sel');
-  document.getElementById('wUnit').textContent=selectedWT.unit;
-  checkMatWarn();
 }
 
 function togCol(id,el){
@@ -679,10 +1034,10 @@ function togCol(id,el){
 }
 
 async function checkMatWarn(){
-  if(!selectedWT||!activeObjId)return;
+  if(!selectedWT||!activeObjId) return;
   const {data:mats}=await sb.from('materials').select('qty').eq('object_id',activeObjId).eq('work_type_id',selectedWT.id);
   const delivered=(mats||[]).reduce((s,m)=>s+m.qty,0);
-  if(!delivered)return document.getElementById('matWarnInline').style.display='none';
+  if(!delivered) return document.getElementById('matWarnInline').style.display='none';
   const {data:logs}=await sb.from('work_logs').select('qty').eq('object_id',activeObjId).eq('work_type_id',selectedWT.id).eq('log_date',todayStr());
   const used=(logs||[]).reduce((s,l)=>s+l.qty,0);
   const qty=parseFloat(document.getElementById('wQty').value)||0;
@@ -719,8 +1074,7 @@ async function stopWork(){
   document.getElementById('startCard').style.display='block';
   document.getElementById('timerCard').style.display='none';
   document.getElementById('logWorkCard').style.display='none';
-  document.getElementById('wUnit').textContent='—';
-  document.querySelectorAll('.wt-btn').forEach(b=>b.classList.remove('sel'));
+  wsShow('wsMain');
   showToast('Darbo diena užbaigta');
 }
 
@@ -735,12 +1089,18 @@ function stopTimer(){if(timerInterval){clearInterval(timerInterval);timerInterva
 
 async function submitLog(){
   if(!selectedWT){showToast('Pasirinkite darbo tipą','err');return;}
-  const qty=parseFloat(document.getElementById('wQty').value);
-  if(!qty||qty<=0){showToast('Įveskite kiekį','err');return;}
-  const notes=document.getElementById('wNotes').value;
-  const totalPeople=1+selectedColleagues.length;
-  const myQty=parseFloat((qty/totalPeople).toFixed(2));
-  const hrs=workStart?parseFloat(((new Date()-workStart)/3600000/totalPeople).toFixed(2)):1;
+  const isTimeOnly = selectedWT.time_only;
+  const qty = isTimeOnly ? null : parseFloat(document.getElementById('wQty').value);
+  const hrsManual = isTimeOnly ? parseFloat(document.getElementById('wHrsManual').value) : null;
+  if(!isTimeOnly && (!qty||qty<=0)){showToast('Įveskite kiekį','err');return;}
+  if(isTimeOnly && (!hrsManual||hrsManual<=0)){showToast('Įveskite sugaištą laiką','err');return;}
+  const notes = document.getElementById('wNotes').value;
+  const extra = document.getElementById('wExtra').value;
+  const totalPeople = 1+selectedColleagues.length;
+  const myQty = isTimeOnly ? null : parseFloat((qty/totalPeople).toFixed(2));
+  let hrs;
+  if(isTimeOnly){ hrs = hrsManual/totalPeople; }
+  else { hrs = workStart ? parseFloat(((new Date()-workStart)/3600000/totalPeople).toFixed(2)) : 1; }
 
   // Upload photos
   let photoUrls=[];
@@ -751,24 +1111,40 @@ async function submitLog(){
     if(up) photoUrls.push(path);
   }
 
-  const logData={worker_id:currentProfile.id,object_id:activeObjId,session_id:activeSession?.id,work_type_id:selectedWT.id,qty:myQty,hrs,notes,photo_urls:photoUrls,colleagues:selectedColleagues,log_date:todayStr()};
+  const finalNotes = [notes, extra?`Skydo dydis: ${extra}`:''].filter(Boolean).join(' | ');
+  const logData={worker_id:currentProfile.id,object_id:activeObjId,session_id:activeSession?.id,
+    work_type_id:selectedWT.id,qty:myQty||0,hrs,notes:finalNotes,photo_urls:photoUrls,
+    colleagues:selectedColleagues,log_date:todayStr()};
   const {error}=await sb.from('work_logs').insert([logData]);
   if(error){showToast('Klaida: '+error.message,'err');return;}
 
-  // Insert for colleagues too
   for(const cid of selectedColleagues){
-    await sb.from('work_logs').insert([{...logData,worker_id:cid,colleagues:[currentProfile.id,...selectedColleagues.filter(x=>x!==cid)],notes:'(grupinis darbas)'}]);
+    await sb.from('work_logs').insert([{...logData,worker_id:cid,
+      colleagues:[currentProfile.id,...selectedColleagues.filter(x=>x!==cid)],notes:finalNotes+' (grupinis darbas)'}]);
   }
 
+  // Update favorites
+  await sb.from('worker_favorites').upsert({
+    worker_id:currentProfile.id,work_type_id:selectedWT.id,
+    use_count:1,last_used:new Date().toISOString()
+  },{onConflict:'worker_id,work_type_id',ignoreDuplicates:false});
+  // Increment count
+  await sb.rpc('increment_favorite',{p_worker_id:currentProfile.id,p_work_type_id:selectedWT.id}).catch(()=>{});
+
+  // Reset form
   document.getElementById('wQty').value='';
+  document.getElementById('wHrsManual').value='';
   document.getElementById('wNotes').value='';
+  document.getElementById('wExtra').value='';
   document.getElementById('photoPreview').innerHTML='';
   document.getElementById('photoInput').value='';
-  document.querySelectorAll('.wt-btn,.col-chip').forEach(b=>b.classList.remove('sel'));
+  document.querySelectorAll('.col-chip').forEach(b=>b.classList.remove('sel'));
   selectedWT=null;selectedColleagues=[];
-  document.getElementById('wUnit').textContent='—';
   document.getElementById('matWarnInline').style.display='none';
+  wsShow('wsMain');
   showToast('✓ Darbas išsaugotas!');
+  await loadFavorites();
+  await loadLastLog();
   renderTodayLog();
 }
 
@@ -779,14 +1155,15 @@ async function renderTodayLog(){
   el.innerHTML=logs.map(l=>{
     const wt=workTypes.find(w=>w.id===l.work_type_id);
     const obj=allObjects.find(o=>o.id===l.object_id);
+    const dispQty = wt?.time_only ? fmtH(l.hrs) : `${l.qty} ${wt?.unit||''}`;
     return `<div class="log-item">
       <div class="log-icon">${wt?.icon||'⚡'}</div>
       <div class="log-body">
         <div class="log-name">${wt?.name||l.work_type_id}</div>
-        <div class="log-meta">${obj?.name||''} · ${fmtH(l.hrs)}${l.colleagues?.length?' · 👥 grupinis':''}${l.corrected?' · ✏️ koreguota':''}</div>
+        <div class="log-meta">${obj?.name||''} · ${wt?.time_only?'':'⏱ '+fmtH(l.hrs)}${l.colleagues?.length?' · 👥':''}</div>
         ${l.notes?`<div class="log-meta">${l.notes}</div>`:''}
       </div>
-      <div class="log-qty">${l.qty} ${wt?.unit||''}</div>
+      <div class="log-qty">${dispQty}</div>
     </div>`;
   }).join('');
 }
