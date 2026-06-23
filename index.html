@@ -1152,6 +1152,9 @@ async function submitLog(){
   await sb.rpc('increment_favorite',{p_worker_id:currentProfile.id,p_work_type_id:selectedWT.id}).catch(()=>{});
 
   // Reset form
+  // 1. Show toast immediately
+  showToast('✓ Darbas išsaugotas!');
+  // 2. Reset form fields
   document.getElementById('wQty').value='';
   document.getElementById('wHrsManual').value='';
   document.getElementById('wNotes').value='';
@@ -1161,11 +1164,12 @@ async function submitLog(){
   document.querySelectorAll('.col-chip').forEach(b=>b.classList.remove('sel'));
   selectedWT=null;selectedColleagues=[];
   document.getElementById('matWarnInline').style.display='none';
+  // 3. Go back to main screen
   wsShow('wsMain');
-  showToast('✓ Darbas išsaugotas!');
+  // 4. Refresh today log and favorites in background
+  await renderTodayLog();
   await loadFavorites();
   await loadLastLog();
-  renderTodayLog();
 }
 
 async function renderTodayLog(){
