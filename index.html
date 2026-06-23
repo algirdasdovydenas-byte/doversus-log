@@ -1143,33 +1143,35 @@ async function submitLog(){
       colleagues:[currentProfile.id,...selectedColleagues.filter(x=>x!==cid)],notes:finalNotes+' (grupinis darbas)'}]);
   }
 
-  // Update favorites
-  await sb.from('worker_favorites').upsert({
-    worker_id:currentProfile.id,work_type_id:selectedWT.id,
-    use_count:1,last_used:new Date().toISOString()
-  },{onConflict:'worker_id,work_type_id',ignoreDuplicates:false});
-  // Increment count
-  await sb.rpc('increment_favorite',{p_worker_id:currentProfile.id,p_work_type_id:selectedWT.id}).catch(()=>{});
-
-  // Reset form
-  // 1. Show toast immediately
+  // 1. Show toast immediately (before anything else)
   showToast('✓ Darbas išsaugotas!');
+
   // 2. Reset form fields
   document.getElementById('wQty').value='';
   document.getElementById('wHrsManual').value='';
   document.getElementById('wNotes').value='';
   document.getElementById('wExtra').value='';
   document.getElementById('photoPreview').innerHTML='';
-  document.getElementById('photoInput').value='';
+  try { document.getElementById('photoInput').value=''; } catch(e){}
   document.querySelectorAll('.col-chip').forEach(b=>b.classList.remove('sel'));
-  selectedWT=null;selectedColleagues=[];
+  selectedWT=null; selectedColleagues=[];
   document.getElementById('matWarnInline').style.display='none';
+
   // 3. Go back to main screen
   wsShow('wsMain');
-  // 4. Refresh today log and favorites in background
-  await renderTodayLog();
-  await loadFavorites();
-  await loadLastLog();
+
+  // 4. Update favorites (non-critical, wrapped in try/catch)
+  try {
+    await sb.from('worker_favorites').upsert({
+      worker_id:currentProfile.id, work_type_id:logData.work_type_id,
+      use_count:1, last_used:new Date().toISOString()
+    },{onConflict:'worker_id,work_type_id'});
+  } catch(e){ console.log('Favorites update skipped:', e); }
+
+  // 5. Refresh UI in background
+  try { await renderTodayLog(); } catch(e){}
+  try { await loadFavorites(); } catch(e){}
+  try { await loadLastLog(); } catch(e){}
 }
 
 async function renderTodayLog(){
