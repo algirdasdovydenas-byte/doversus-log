@@ -1816,14 +1816,29 @@ async function openNorms(){
   openModal('normsModal');
 }
 async function saveNorms(){
-  for(const wt of workTypes){
-    const v=parseFloat(document.getElementById('norm_'+wt.id).value);
-    if(!isNaN(v)){
-      await sb.from('norms').upsert({work_type_id:wt.id,minutes_per_unit:v,updated_by:currentProfile.id,updated_at:new Date().toISOString()});
-      norms[wt.id]=v;
-    }
-  }
-  closeModal('normsModal');showToast('✓ Normatyvai išsaugoti');
+  // Close modal and show toast immediately
+  closeModal('normsModal');
+  showToast('✓ Normatyvai išsaugomi...');
+
+  // Collect only changed values
+  const updates = workTypes
+    .map(wt => ({ wt, v: parseFloat(document.getElementById('norm_'+wt.id)?.value) }))
+    .filter(({v}) => !isNaN(v));
+
+  // Update local state immediately
+  updates.forEach(({wt,v}) => norms[wt.id] = v);
+
+  // Send all in one batch upsert (single request instead of 200+)
+  const rows = updates.map(({wt,v}) => ({
+    work_type_id: wt.id,
+    minutes_per_unit: v,
+    updated_by: currentProfile.id,
+    updated_at: new Date().toISOString()
+  }));
+
+  const {error} = await sb.from('norms').upsert(rows);
+  if(error){ showToast('Klaida išsaugant: '+error.message,'err'); return; }
+  showToast('✓ Normatyvai išsaugoti');
 }
 
 // ═══════════════════════════════════════════════════════════════
