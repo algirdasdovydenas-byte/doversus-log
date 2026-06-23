@@ -1816,9 +1816,9 @@ async function openNorms(){
   openModal('normsModal');
 }
 async function saveNorms(){
-  // Close modal and show toast immediately
-  closeModal('normsModal');
+  // Show toast first, then close modal after short delay
   showToast('✓ Normatyvai išsaugomi...');
+  setTimeout(() => closeModal('normsModal'), 300);
 
   // Collect only changed values
   const updates = workTypes
