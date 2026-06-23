@@ -835,7 +835,7 @@ async function loadFavorites(){
     return `<div class="fav-btn" onclick="selectWT('${wt.id}')">
       <div class="fav-icon">${wt.icon}</div>
       <div class="fav-name">${wt.name.length>22?wt.name.slice(0,22)+'…':wt.name}</div>
-      <div class="fav-norm">${norm?norm+' min/'+wt.unit:'tik laikas'}</div>
+
     </div>`;
   }).join('');
 }
@@ -882,7 +882,7 @@ function renderCatList(items){
     return `<div class="ws-item" onclick="selectWT('${wt.id}')">
       <div class="ws-item-icon">${wt.icon}</div>
       <div class="ws-item-name">${wt.name}</div>
-      <div class="ws-item-norm">${wt.time_only?'tik laikas':norm?(norm+' min/'+wt.unit):'—'}</div>
+
     </div>`;
   }).join('');
 }
@@ -912,7 +912,7 @@ function wsSearchInput(q){
         <div class="ws-item-name">${wt.name}</div>
         <div style="font-size:10px;color:var(--muted)">${cat?.icon||''} ${wt.category}</div>
       </div>
-      <div class="ws-item-norm">${wt.time_only?'tik laikas':norm?(norm+' min/'+wt.unit):'—'}</div>
+
     </div>`;
   }).join('');
   res.style.display='block';
@@ -931,10 +931,27 @@ function buildCablePicker(){
   const special = allCableTypes.filter(w=>!w.name.match(/^Kabelis \d+x/));
 
   document.getElementById('cableCores').innerHTML =
-    coreSet.map(c=>`<div class="cable-chip" onclick="selectCores('${c}')" id="core_${c}">${c} žilų</div>`).join('') +
-    `<div class="cable-chip" onclick="openCategory('Kabeliai','special_list')">Kiti (gaisriniai, ryšių...)</div>`;
+    coreSet.map(c=>`<div class="cable-chip" onclick="selectCores('${c}')" id="core_${c}">${c} gyslų</div>`).join('') +
+    `<div class="cable-chip" onclick="openSpecialCables()">Kiti (gaisriniai, ryšių...)</div>`;
   document.getElementById('cableSectionStep').style.display='none';
   document.getElementById('cableSubtypeStep').style.display='none';
+}
+
+
+function openSpecialCables(){
+  const specialIds = [
+    'kab_ftp','kab_utp','kab_stp','kab_patch','kab_sviesol',
+    'kab_4x022','kab_6x022','kab_8x022',
+    'kab_g2x05','kab_g2x08','kab_g2x10','kab_g2x14',
+    'kab_g4x05','kab_g4x08','kab_g4x10','kab_g4x14',
+    'kab_uzved'
+  ];
+  const items = workTypes.filter(w => specialIds.includes(w.id));
+  currentCategory = 'Kabeliai – kiti';
+  document.getElementById('wsCatTitle').textContent = '🔌 Kiti kabeliai';
+  document.getElementById('wsCatSearch').value = '';
+  renderCatList(items);
+  wsShow('wsCatItems');
 }
 
 function selectCores(cores){
