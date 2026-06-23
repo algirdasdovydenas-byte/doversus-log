@@ -494,6 +494,13 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
       <div><label>Ilguma (lng)</label><input id="newObjLng" placeholder="25.2797" type="number" step="0.0001"></div>
     </div>
     <div class="form-row"><label>Darbų vadovas</label><select id="newObjSup"></select></div>
+    <div class="form-row">
+      <label>Montuotojai (galima pridėti dabar arba vėliau)</label>
+      <div id="newObjWorkersList" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;min-height:36px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:8px;"></div>
+    </div>
+    <div id="newObjWarning" style="display:none;background:var(--orange-dim);border:1px solid #D9770630;border-radius:8px;padding:10px 14px;font-size:12px;color:var(--orange);margin-bottom:4px;">
+      ⚠️ Nepriskirtas nė vienas montuotojas. Montuotojai negalės matyti šio objekto kol jie nebus priskirti.
+    </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('addObjModal')">Atšaukti</button>
       <button class="btn btn-primary" style="flex:2" onclick="addObject()">Sukurti</button>
@@ -1719,7 +1726,23 @@ function openFullscreen(url){
 async function openAddObject(){
   const sups=allProfiles.filter(p=>p.role==='darbo-vadovas');
   document.getElementById('newObjSup').innerHTML=sups.map(u=>`<option value="${u.id}">${u.full_name}</option>`).join('');
+  // Build worker picker
+  const workers=allProfiles.filter(p=>p.role==='montuotojas');
+  document.getElementById('newObjWorkersList').innerHTML = workers.length
+    ? workers.map(u=>`
+      <label style="display:flex;align-items:center;gap:6px;padding:4px 10px;background:var(--panel);border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:12px;font-weight:500;transition:border-color .15s;" id="wchk_lbl_${u.id}">
+        <input type="checkbox" value="${u.id}" id="wchk_${u.id}" style="accent-color:var(--accent)" onchange="updateObjWorkerWarn()">
+        <div class="mini-av" style="background:${u.color};width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;flex-shrink:0">${u.initials}</div>
+        ${u.full_name.split(' ')[0]}
+      </label>`).join('')
+    : '<span style="font-size:12px;color:var(--muted)">Nėra montuotojų sistemoje</span>';
+  document.getElementById('newObjWarning').style.display='none';
   openModal('addObjModal');
+}
+
+function updateObjWorkerWarn(){
+  const checked = document.querySelectorAll('#newObjWorkersList input[type=checkbox]:checked').length;
+  document.getElementById('newObjWarning').style.display = checked===0 ? 'block' : 'none';
 }
 async function addObject(){
   const name=document.getElementById('newObjName').value.trim();
@@ -1728,13 +1751,34 @@ async function addObject(){
   const lng=parseFloat(document.getElementById('newObjLng').value)||null;
   const supId=document.getElementById('newObjSup').value;
   if(!name){showToast('Įveskite pavadinimą','err');return;}
+
+  // Get selected workers
+  const checkedWorkers=[...document.querySelectorAll('#newObjWorkersList input[type=checkbox]:checked')].map(c=>c.value);
+
+  // Warn if no workers selected but allow creation
+  if(checkedWorkers.length===0){
+    document.getElementById('newObjWarning').style.display='block';
+    // Give 2s for user to see warning then continue
+    await new Promise(r=>setTimeout(r,1500));
+  }
+
   const {data:obj,error}=await sb.from('objects').insert({name,address:addr,lat,lng,created_by:currentProfile.id}).select().single();
   if(error){showToast('Klaida: '+error.message,'err');return;}
   if(supId) await sb.from('object_supervisors').insert({object_id:obj.id,supervisor_id:supId});
+
+  // Assign selected workers
+  if(checkedWorkers.length>0){
+    await sb.from('object_workers').insert(checkedWorkers.map(wid=>({object_id:obj.id,worker_id:wid})));
+  }
+
   await loadGlobalData();
   mgrObjId=obj.id;
-  closeModal('addObjModal');showToast('✓ Objektas sukurtas');
-  renderMgrObjTabs();renderMgrStats();
+  closeModal('addObjModal');
+  const msg = checkedWorkers.length>0
+    ? `✓ Objektas sukurtas, priskirta ${checkedWorkers.length} montuotojų`
+    : '✓ Objektas sukurtas. Nepamirškite priskirti montuotojų!';
+  showToast(msg, checkedWorkers.length===0 ? 'warn-t' : '');
+  renderMgrObjTabs();renderMgrStats();renderMgrObjWorkers();
 }
 
 // ADD USER (admin creates user via Supabase admin API via edge function in production)
