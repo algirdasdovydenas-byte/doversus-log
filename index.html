@@ -1469,24 +1469,45 @@ async function renderMgrWorkTable(){
 }
 
 async function renderMgrWorkerBreak(){
-  const {data:logs}=await sb.from('work_logs').select('*').eq('object_id',mgrObjId).eq('log_date',todayStr());
+  // factHrs from work_sessions (actual time on site), normHrs from work_logs
+  const [sessRes, logsRes] = await Promise.all([
+    sb.from('work_sessions').select('worker_id,duration_hrs,started_at,ended_at').eq('object_id',mgrObjId).gte('started_at', todayStr()+'T00:00:00').lte('started_at', todayStr()+'T23:59:59'),
+    sb.from('work_logs').select('*').eq('object_id',mgrObjId).eq('log_date',todayStr())
+  ]);
+  const sessions = sessRes.data||[];
+  const logs = logsRes.data||[];
   const byW={};
-  (logs||[]).forEach(l=>{if(!byW[l.worker_id])byW[l.worker_id]={hrs:0,normHrs:0};byW[l.worker_id].hrs+=l.hrs;byW[l.worker_id].normHrs+=l.qty*(norms[l.work_type_id]||0)/60;});
-  const maxH=Math.max(...Object.values(byW).map(w=>w.hrs),1);
+  // Fact hours from sessions
+  sessions.forEach(s=>{
+    const hrs = s.duration_hrs || (s.ended_at ? parseFloat(((new Date(s.ended_at)-new Date(s.started_at))/3600000).toFixed(2)) : parseFloat(((new Date()-new Date(s.started_at))/3600000).toFixed(2)));
+    if(!byW[s.worker_id]) byW[s.worker_id]={factHrs:0,normHrs:0};
+    byW[s.worker_id].factHrs += hrs;
+  });
+  // Norm hours from logs
+  logs.forEach(l=>{
+    if(!byW[l.worker_id]) byW[l.worker_id]={factHrs:0,normHrs:0};
+    byW[l.worker_id].normHrs += l.qty*(norms[l.work_type_id]||0)/60;
+  });
+  const maxH=Math.max(...Object.values(byW).map(w=>w.factHrs),1);
   const el=document.getElementById('mgrWorkerBreak');
   const entries=Object.entries(byW);
   if(!entries.length){el.innerHTML='<div class="empty">Nėra duomenų</div>';return;}
   el.innerHTML=entries.map(([uid,d])=>{
     const u=allProfiles.find(p=>p.id===uid);
-    const eff=d.normHrs>0?Math.round(d.normHrs/d.hrs*100):100;
+    const eff=d.factHrs>0&&d.normHrs>0?Math.round(d.normHrs/d.factHrs*100):null;
+    const effColor = eff===null?'var(--muted)':eff>=100?'var(--green)':eff>=90?'var(--orange)':'var(--red)';
+    const effIcon = eff===null?'—':eff>=100?'🟢':eff>=90?'🟡':'🔴';
     return `<div class="w-row">
       <div class="avatar" style="background:${u?.color};width:32px;height:32px;font-size:11px">${u?.initials}</div>
       <div class="w-info">
         <div class="w-name">${u?.full_name}</div>
-        <div class="prog"><div class="prog-fill" style="width:${Math.min(100,d.hrs/maxH*100).toFixed(0)}%"></div></div>
-        <div class="w-sub">Efektyvumas: <b style="color:${eff>=100?'var(--green)':'var(--accent)'}">${eff}%</b></div>
+        <div class="prog"><div class="prog-fill" style="width:${Math.min(100,d.factHrs/maxH*100).toFixed(0)}%"></div></div>
+        <div class="w-sub">${effIcon} Efektyvumas: <b style="color:${effColor}">${eff!==null?eff+'%':'nėra duomenų'}</b> · Norma: ${fmtH(d.normHrs)}</div>
       </div>
-      <div class="mono">${fmtH(d.hrs)}</div>
+      <div style="text-align:right">
+        <div class="mono">${fmtH(d.factHrs)}</div>
+        <div style="font-size:10px;color:var(--muted)">faktinis</div>
+      </div>
     </div>`;
   }).join('');
 }
@@ -1545,21 +1566,34 @@ async function renderBonus(){
   const {data:logs}=await sb.from('work_logs').select('*').gte('log_date',from).lte('log_date',to);
   const el=document.getElementById('bonusList');
   if(!logs?.length){el.innerHTML='<div class="empty">Nėra duomenų šiam mėnesiui</div>';return;}
+  // Get work_sessions for accurate factual hours
+  const {data:sessions}=await sb.from('work_sessions').select('worker_id,duration_hrs,started_at,ended_at').gte('started_at',from+'T00:00:00').lte('started_at',to+'T23:59:59');
+
   const workerData=workers.map(u=>{
     const ul=(logs||[]).filter(l=>l.worker_id===u.id);
-    const factHrs=ul.reduce((s,l)=>s+l.hrs,0);
+    // factHrs from sessions (actual time on site)
+    const userSessions=(sessions||[]).filter(s=>s.worker_id===u.id);
+    const factHrs=userSessions.reduce((s,sess)=>{
+      const h=sess.duration_hrs||(sess.ended_at?parseFloat(((new Date(sess.ended_at)-new Date(sess.started_at))/3600000).toFixed(2)):0);
+      return s+h;
+    },0);
+    // normHrs from logs (qty * norm)
     const normHrs=ul.reduce((s,l)=>s+(l.qty*(norms[l.work_type_id]||0)/60),0);
     const saved=normHrs-factHrs;
     const bonus=saved>0?parseFloat((saved*(bonusPct/100)).toFixed(2)):0;
-    return {u,factHrs,normHrs,saved,bonus};
-  }).filter(w=>w.factHrs>0).sort((a,b)=>b.bonus-a.bonus);
+    const eff=factHrs>0&&normHrs>0?Math.round(normHrs/factHrs*100):null;
+    return {u,factHrs,normHrs,saved,bonus,eff};
+  }).filter(w=>w.factHrs>0||w.normHrs>0).sort((a,b)=>b.bonus-a.bonus);
   if(!workerData.length){el.innerHTML='<div class="empty">Nėra duomenų šiam mėnesiui</div>';return;}
   el.innerHTML=workerData.map(({u,factHrs,normHrs,saved,bonus})=>`
     <div class="bonus-worker-card">
       <div style="display:flex;align-items:center;gap:12px">
         <div class="avatar" style="background:${u.color};width:40px;height:40px;font-size:13px">${u.initials}</div>
         <div style="flex:1"><div style="font-size:14px;font-weight:700">${u.full_name}</div><div style="font-size:11px;color:var(--muted)">Mėnuo: ${new Date(month).toLocaleDateString('lt-LT',{year:'numeric',month:'long'})}</div></div>
-        ${bonus>0?`<div style="background:var(--green-dim);color:var(--green);padding:7px 14px;border-radius:8px;font-weight:800;font-size:14px;text-align:center"><div>+${bonus}h</div><div style="font-size:10px;opacity:.75;margin-top:2px">${bonusPct}% premija</div></div>`:`<div style="color:var(--muted);font-size:12px;">Priedo nėra</div>`}
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+        ${eff!==null?`<div style="background:${eff>=100?'var(--green-dim)':eff>=90?'var(--orange-dim)':'var(--red-dim)'};color:${eff>=100?'var(--green)':eff>=90?'var(--orange)':'var(--red)'};padding:4px 10px;border-radius:6px;font-weight:700;font-size:12px">${eff>=100?'🟢':eff>=90?'🟡':'🔴'} ${eff}%</div>`:''}
+        ${bonus>0?`<div style="background:var(--green-dim);color:var(--green);padding:6px 12px;border-radius:8px;font-weight:800;font-size:13px;text-align:center"><div>+${bonus}h</div><div style="font-size:10px;opacity:.75">${bonusPct}% premija</div></div>`:`<div style="color:var(--muted);font-size:12px;">Priedo nėra</div>`}
+      </div>
       </div>
       <div class="bonus-trio">
         <div class="bonus-trio-item"><div class="bonus-trio-lbl">Faktas</div><div class="bonus-trio-val" style="color:var(--accent)">${fmtH(factHrs)}</div></div>
