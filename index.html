@@ -335,7 +335,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
         <button class="ws-back" onclick="wsBack('wsMain')">← Atgal</button>
         <div style="font-size:14px;font-weight:800;margin-bottom:14px">🔌 Pasirinkti kabelį</div>
         <div class="cable-step">
-          <div class="cable-step-lbl">1. Žilų skaičius</div>
+          <div class="cable-step-lbl">1. Gyslų skaičius</div>
           <div class="cable-chips" id="cableCores"></div>
         </div>
         <div class="cable-step" id="cableSectionStep" style="display:none">
@@ -1023,6 +1023,9 @@ function selectWT(id){
   document.getElementById('wExtra').value='';
   document.getElementById('matWarnInline').style.display='none';
   document.getElementById('wsSearch').value='';
+  // Rebuild colleague grid every time form opens
+  if(activeObjId) buildColGrid();
+  else document.getElementById('colGrid').innerHTML='<span style="font-size:12px;color:var(--muted)">Pradėkite darbą kad matytumėte kolegas</span>';
   wsShow('wsForm');
 }
 
@@ -1105,17 +1108,18 @@ function stopTimer(){if(timerInterval){clearInterval(timerInterval);timerInterva
 
 async function submitLog(){
   if(!selectedWT){showToast('Pasirinkite darbo tipą','err');return;}
+  if(!activeObjId){showToast('Pirmiausia pradėkite darbą (▶)','err');return;}
   const isTimeOnly = selectedWT.time_only;
   const qty = isTimeOnly ? null : parseFloat(document.getElementById('wQty').value);
   const hrsManual = isTimeOnly ? parseFloat(document.getElementById('wHrsManual').value) : null;
   if(!isTimeOnly && (!qty||isNaN(qty)||qty<=0)){showToast('Įveskite kiekį','err');return;}
-  if(isTimeOnly && (!hrsManual||hrsManual<=0)){showToast('Įveskite sugaištą laiką','err');return;}
+  if(isTimeOnly && (!hrsManual||isNaN(hrsManual)||hrsManual<=0)){showToast('Įveskite sugaištą laiką','err');return;}
   const notes = document.getElementById('wNotes').value;
   const extra = document.getElementById('wExtra').value;
   const totalPeople = 1+selectedColleagues.length;
   const myQty = isTimeOnly ? null : parseFloat((qty/totalPeople).toFixed(2));
   let hrs;
-  if(isTimeOnly){ hrs = hrsManual/totalPeople; }
+  if(isTimeOnly){ hrs = parseFloat((hrsManual/totalPeople).toFixed(2)); }
   else { hrs = workStart ? Math.max(0.01, parseFloat(((new Date()-workStart)/3600000/totalPeople).toFixed(2))) : 1; }
 
   // Upload photos
