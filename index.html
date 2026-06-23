@@ -1005,8 +1005,7 @@ function selectWT(id){
   document.getElementById('selWtName').textContent = selectedWT.name;
   const norm = norms[selectedWT.id];
   document.getElementById('selWtNorm').textContent = selectedWT.time_only
-    ? 'Įvesti tik laiką (valandomis)'
-    : norm ? `Norma: ${norm} min/${selectedWT.unit}` : 'Normos nėra';
+    ? 'Įvesti tik laiką (valandomis)' : '';
   document.getElementById('wUnit').textContent = selectedWT.unit;
   // Toggle sections
   const isTimeOnly = selectedWT.time_only;
@@ -1109,7 +1108,7 @@ async function submitLog(){
   const isTimeOnly = selectedWT.time_only;
   const qty = isTimeOnly ? null : parseFloat(document.getElementById('wQty').value);
   const hrsManual = isTimeOnly ? parseFloat(document.getElementById('wHrsManual').value) : null;
-  if(!isTimeOnly && (!qty||qty<=0)){showToast('Įveskite kiekį','err');return;}
+  if(!isTimeOnly && (!qty||isNaN(qty)||qty<=0)){showToast('Įveskite kiekį','err');return;}
   if(isTimeOnly && (!hrsManual||hrsManual<=0)){showToast('Įveskite sugaištą laiką','err');return;}
   const notes = document.getElementById('wNotes').value;
   const extra = document.getElementById('wExtra').value;
@@ -1117,7 +1116,7 @@ async function submitLog(){
   const myQty = isTimeOnly ? null : parseFloat((qty/totalPeople).toFixed(2));
   let hrs;
   if(isTimeOnly){ hrs = hrsManual/totalPeople; }
-  else { hrs = workStart ? parseFloat(((new Date()-workStart)/3600000/totalPeople).toFixed(2)) : 1; }
+  else { hrs = workStart ? Math.max(0.01, parseFloat(((new Date()-workStart)/3600000/totalPeople).toFixed(2))) : 1; }
 
   // Upload photos
   let photoUrls=[];
