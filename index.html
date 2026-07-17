@@ -208,6 +208,17 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 .wt-sel-norm { font-size:11px;color:var(--muted); }
 .wt-sel-change { font-size:11px;font-weight:600;color:var(--accent);background:var(--panel);padding:4px 10px;border-radius:6px; }
 
+
+/* ALERT BANNER */
+.alert-banner{position:fixed;top:56px;left:0;right:0;z-index:150;padding:12px 16px;display:flex;align-items:center;gap:12px;font-size:13px;font-weight:600;transform:translateY(-100%);transition:transform .3s;box-shadow:0 4px 12px rgba(0,0,0,.15);}
+.alert-banner.show{transform:translateY(0);}
+.alert-banner.warn{background:var(--orange);color:#fff;}
+.alert-banner.danger{background:var(--red);color:#fff;}
+.alert-banner-icon{font-size:20px;flex-shrink:0;}
+.alert-banner-text{flex:1;line-height:1.4;}
+.alert-banner-btn{background:rgba(255,255,255,.25);border:1px solid rgba(255,255,255,.4);border-radius:6px;padding:5px 12px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;flex-shrink:0;}
+.alert-banner-close{background:none;border:none;color:#fff;font-size:18px;cursor:pointer;padding:0;flex-shrink:0;opacity:.8;}
+
 /* MODAL */
 .overlay{display:none;position:fixed;inset:0;background:rgba(15,30,50,.55);z-index:200;align-items:center;justify-content:center;padding:16px;}
 .overlay.open{display:flex;}
@@ -249,6 +260,14 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
     </div>
     <button class="btn-logout" onclick="logout()">Išeiti</button>
   </div>
+</div>
+
+<!-- ALERT BANNER -->
+<div class="alert-banner" id="alertBanner">
+  <div class="alert-banner-icon" id="alertIcon"></div>
+  <div class="alert-banner-text" id="alertText"></div>
+  <button class="alert-banner-btn" id="alertBtn" onclick="alertAction()" style="display:none"></button>
+  <button class="alert-banner-close" onclick="hideAlert()">✕</button>
 </div>
 
 <!-- ═══ LOGIN ═══ -->
@@ -671,6 +690,10 @@ let supObjId = null;
 let mgrObjId = null;
 let editingLogId = null;
 let userLat = null, userLng = null;
+let gpsAlertShown = false;
+let autoStopInterval = null;
+let alertCallback = null;
+let distanceAlertCooldown = false;
 
 // ═══════════════════════════════════════════════════════════════
 // HELPERS
@@ -1089,6 +1112,10 @@ async function startWork(){
   buildColGrid();
   startTimer();
   showToast('✓ Darbo laikas pradėtas');
+  // Request notification permission
+  if('Notification' in window && Notification.permission==='default'){
+    Notification.requestPermission();
+  }
 }
 
 async function stopWork(){
@@ -1110,9 +1137,54 @@ function startTimer(){
     const d=Math.floor((new Date()-workStart)/1000);
     const h=Math.floor(d/3600),m=Math.floor((d%3600)/60),s=d%60;
     document.getElementById('timerVal').textContent=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+
+    // Auto-stop after 12 hours
+    const totalHrs = d / 3600;
+    if(totalHrs >= 12 && activeSession){
+      autoStop12h();
+    }
+    // Warn at 11h
+    if(totalHrs >= 11 && totalHrs < 11.02 && activeSession){
+      showAlert('warn','⚠️','Darbo sesija aktyvi jau 11 valandų. Po 1 valandos ji bus automatiškai užbaigta.','',null);
+    }
   },1000);
 }
-function stopTimer(){if(timerInterval){clearInterval(timerInterval);timerInterval=null;}}
+function stopTimer(){
+  if(timerInterval){clearInterval(timerInterval);timerInterval=null;}
+}
+
+async function autoStop12h(){
+  if(!activeSession) return;
+  stopTimer();
+  const ended = new Date();
+  const hrs = parseFloat(((ended - workStart)/3600000).toFixed(2));
+  await sb.from('work_sessions').update({ended_at:ended.toISOString(),duration_hrs:hrs}).eq('id',activeSession.id);
+  activeSession=null; activeObjId=null; workStart=null; selectedWT=null; selectedColleagues=[];
+  document.getElementById('startCard').style.display='block';
+  document.getElementById('timerCard').style.display='none';
+  document.getElementById('logWorkCard').style.display='none';
+  wsShow('wsMain');
+  showAlert('danger','🕛','Darbo sesija automatiškai užbaigta po 12 valandų. Jei tai klaida, kreipkitės į darbų vadovą.','',null);
+  showToast('⏹ Sesija automatiškai užbaigta (12h)','warn-t');
+}
+
+// Alert banner
+function showAlert(type, icon, text, btnLabel, callback){
+  const banner = document.getElementById('alertBanner');
+  document.getElementById('alertIcon').textContent = icon;
+  document.getElementById('alertText').textContent = text;
+  const btn = document.getElementById('alertBtn');
+  if(btnLabel){ btn.style.display='block'; btn.textContent=btnLabel; alertCallback=callback; }
+  else { btn.style.display='none'; alertCallback=null; }
+  banner.className = `alert-banner ${type} show`;
+}
+function hideAlert(){
+  document.getElementById('alertBanner').classList.remove('show');
+}
+function alertAction(){
+  hideAlert();
+  if(alertCallback) alertCallback();
+}
 
 async function submitLog(){
   if(!selectedWT){showToast('Pasirinkite darbo tipą','err');return;}
@@ -1223,9 +1295,41 @@ function updateGPS(){
   const obj=allObjects.find(o=>o.id===objId);
   if(obj?.lat&&obj?.lng){
     const d=dist(userLat,userLng,obj.lat,obj.lng);
-    if(d<=300){bar.className='gps-bar ok';txt.textContent=`GPS: Esate objekte (${Math.round(d)}m)`;}
-    else{bar.className='gps-bar warn';txt.textContent=`GPS: ${Math.round(d)}m nuo objekto`;}
-  }else{bar.className='gps-bar ok';txt.textContent='GPS aktyvus';}
+    if(d<=300){
+      bar.className='gps-bar ok';
+      txt.textContent=`GPS: Esate objekte (${Math.round(d)}m)`;
+      distanceAlertCooldown=false; // reset cooldown when back
+    } else if(d>1000 && activeSession && !distanceAlertCooldown){
+      // Over 1km away and session active
+      bar.className='gps-bar warn';
+      txt.textContent=`GPS: ${(d/1000).toFixed(1)}km nuo objekto`;
+      distanceAlertCooldown=true;
+      showAlert(
+        'warn','📍',
+        `Esate ${(d/1000).toFixed(1)}km nuo objekto. Ar baigėte darbą?`,
+        'Baigti darbą',
+        ()=>stopWork()
+      );
+      // Try push notification
+      sendPushNotification('📍 DoversusLog', `Esate ${(d/1000).toFixed(1)}km nuo objekto. Ar baigėte darbą?`);
+    } else {
+      bar.className='gps-bar warn';
+      txt.textContent=`GPS: ${Math.round(d)}m nuo objekto`;
+    }
+  } else {
+    bar.className='gps-bar ok';txt.textContent='GPS aktyvus';
+  }
+}
+
+function sendPushNotification(title, body){
+  if(!('Notification' in window)) return;
+  if(Notification.permission==='granted'){
+    new Notification(title,{body,icon:'/favicon.ico',badge:'/favicon.ico'});
+  } else if(Notification.permission!=='denied'){
+    Notification.requestPermission().then(p=>{
+      if(p==='granted') new Notification(title,{body,icon:'/favicon.ico'});
+    });
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1533,18 +1637,80 @@ async function renderMgrFeed(){
 
 async function renderMgrWorkersTab(){
   const workers=allProfiles.filter(p=>p.role==='montuotojas');
-  const {data:todayLogs}=await sb.from('work_logs').select('worker_id,hrs').eq('log_date',todayStr());
-  const active=workers.filter(u=>(todayLogs||[]).some(l=>l.worker_id===u.id)).length;
+
+  // Get today's sessions (factual hours) and logs (norm hours)
+  const [sessRes, logsRes] = await Promise.all([
+    sb.from('work_sessions').select('worker_id,duration_hrs,started_at,ended_at').gte('started_at',todayStr()+'T00:00:00').lte('started_at',todayStr()+'T23:59:59'),
+    sb.from('work_logs').select('worker_id,qty,hrs,work_type_id').eq('log_date',todayStr())
+  ]);
+  const sessions = sessRes.data||[];
+  const todayLogs = logsRes.data||[];
+
+  // Calculate per worker
+  const workerStats = {};
+  workers.forEach(u=>{
+    const userSess = sessions.filter(s=>s.worker_id===u.id);
+    const userLogs = todayLogs.filter(l=>l.worker_id===u.id);
+    const factHrs = userSess.reduce((s,sess)=>{
+      const h=sess.duration_hrs||(sess.ended_at?parseFloat(((new Date(sess.ended_at)-new Date(sess.started_at))/3600000).toFixed(2)):parseFloat(((new Date()-new Date(sess.started_at))/3600000).toFixed(2)));
+      return s+h;
+    },0);
+    const normHrs = userLogs.reduce((s,l)=>s+(l.qty*(norms[l.work_type_id]||0)/60),0);
+    const eff = factHrs>0&&normHrs>0 ? Math.round(normHrs/factHrs*100) : null;
+    workerStats[u.id]={factHrs,normHrs,eff};
+  });
+
+  const active=workers.filter(u=>workerStats[u.id]?.factHrs>0).length;
+  const aboveNorm=workers.filter(u=>workerStats[u.id]?.eff!=null&&workerStats[u.id].eff>=100).length;
+
   document.getElementById('mgrWStats').innerHTML=`
-    <div class="stat blue"><div class="stat-lbl">Viso montuotojų</div><div class="stat-val">${workers.length}</div><div class="stat-unit">darbuotojų</div></div>
-    <div class="stat green"><div class="stat-lbl">Aktyvūs šiandien</div><div class="stat-val">${active}</div><div class="stat-unit">dirba</div></div>`;
-  document.getElementById('allWorkers').innerHTML=workers.map(u=>{
-    const hrs=(todayLogs||[]).filter(l=>l.worker_id===u.id).reduce((s,l)=>s+l.hrs,0);
-    const obj=allObjects.find(o=>allProfiles.find(p=>p.id===u.id));
-    return `<div class="w-row">
-      <div class="avatar" style="background:${u.color};width:36px;height:36px;font-size:12px">${u.initials}</div>
-      <div class="w-info"><div class="w-name">${u.full_name}</div><div class="w-sub">${hrs>0?'🟢 Aktyvus':'⚪ Neprisijungęs'}</div></div>
-      <div class="mono">${hrs>0?fmtH(hrs):'—'}</div>
+    <div class="stat blue"><div class="stat-lbl">Viso montuotojų</div><div class="stat-val">${workers.length}</div><div class="stat-unit">sistemoje</div></div>
+    <div class="stat green"><div class="stat-lbl">Aktyvūs šiandien</div><div class="stat-val">${active}</div><div class="stat-unit">dirba</div></div>
+    <div class="stat orange"><div class="stat-lbl">Virš normos</div><div class="stat-val">${aboveNorm}</div><div class="stat-unit">šiandien 🟢</div></div>`;
+
+  // Sort: active first, then by efficiency desc
+  const sorted = [...workers].sort((a,b)=>{
+    const aA=workerStats[a.id]?.factHrs>0?1:0;
+    const bA=workerStats[b.id]?.factHrs>0?1:0;
+    if(aA!==bA) return bA-aA;
+    return (workerStats[b.id]?.eff||0)-(workerStats[a.id]?.eff||0);
+  });
+
+  document.getElementById('allWorkers').innerHTML=sorted.map(u=>{
+    const {factHrs,normHrs,eff}=workerStats[u.id]||{factHrs:0,normHrs:0,eff:null};
+    const active=factHrs>0;
+    const effColor=eff===null?'var(--muted)':eff>=100?'var(--green)':eff>=90?'var(--orange)':'var(--red)';
+    const effIcon=eff===null?'':eff>=100?'🟢':eff>=90?'🟡':'🔴';
+    const effBadge=eff!==null?`<span style="background:${eff>=100?'var(--green-dim)':eff>=90?'var(--orange-dim)':'var(--red-dim)'};color:${effColor};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;margin-left:6px">${effIcon} ${eff}%</span>`:'';
+    // Find assigned object
+    const objEntry=Object.entries({}).find(()=>false); // placeholder
+    const assignedObj=allObjects.find(o=>{
+      return true; // will fetch below if needed
+    });
+    return `<div class="w-row" style="align-items:flex-start;padding:14px 0">
+      <div class="avatar" style="background:${u.color};width:38px;height:38px;font-size:12px;flex-shrink:0;margin-top:2px">${u.initials}</div>
+      <div class="w-info" style="flex:1">
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">
+          <div class="w-name">${u.full_name}</div>
+          ${effBadge}
+        </div>
+        <div class="w-sub" style="margin-top:4px">${active?'🟢 Dirba šiandien':'⚪ Neprisijungęs'}</div>
+        ${active?`
+        <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+          <div style="background:var(--panel2);border-radius:6px;padding:6px 8px;text-align:center">
+            <div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase">Faktas</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--accent)">${fmtH(factHrs)}</div>
+          </div>
+          <div style="background:var(--panel2);border-radius:6px;padding:6px 8px;text-align:center">
+            <div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase">Norma</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--green)">${fmtH(normHrs)}</div>
+          </div>
+          <div style="background:${eff!=null&&eff>=100?'var(--green-dim)':eff!=null&&eff>=90?'var(--orange-dim)':'var(--panel2)'};border-radius:6px;padding:6px 8px;text-align:center">
+            <div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase">Efektyvumas</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${effColor}">${eff!==null?eff+'%':'—'}</div>
+          </div>
+        </div>`:''}
+      </div>
     </div>`;
   }).join('');
 }
