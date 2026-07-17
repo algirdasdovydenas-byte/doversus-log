@@ -1581,32 +1581,43 @@ function renderMgrObjTabs(){
 async function selMgrObj(id){mgrObjId=id;renderMgrObjTabs();await Promise.all([renderMgrStats(),renderMgrWorkTable(),renderMgrWorkerBreak(),renderMgrFeed(),renderMgrObjWorkers()]);}
 
 async function renderMgrStats(){
-  // Always show totals for entire object lifetime
-  const {data:allLogs}=await sb.from('work_logs').select('*').eq('object_id',mgrObjId);
-  // Day logs for "active workers today"
-  const {data:dayLogs}=await sb.from('work_logs').select('worker_id').eq('object_id',mgrObjId).eq('log_date',mgrDate());
-  const factHrs=(allLogs||[]).reduce((s,l)=>s+l.hrs,0);
+  // Fetch only needed fields for totals
+  const [{data:allLogs},{data:dayLogs},{data:sessions}] = await Promise.all([
+    sb.from('work_logs').select('work_type_id,qty,hrs').eq('object_id',mgrObjId),
+    sb.from('work_logs').select('worker_id').eq('object_id',mgrObjId).eq('log_date',mgrDate()),
+    sb.from('work_sessions').select('duration_hrs').eq('object_id',mgrObjId)
+  ]);
+  const factHrs=(sessions||[]).reduce((s,sess)=>s+(sess.duration_hrs||0),0);
   const normHrs=(allLogs||[]).reduce((s,l)=>s+(l.qty*(norms[l.work_type_id]||0)/60),0);
   const workers=[...new Set((dayLogs||[]).map(l=>l.worker_id))].length;
   const kab=(allLogs||[]).filter(l=>l.work_type_id.startsWith('kab_')).reduce((s,l)=>s+l.qty,0);
-  const totalDays=[...new Set((allLogs||[]).map(l=>l.log_date))].length;
+  const totalEntries=(allLogs||[]).length;
   document.getElementById('mgrStats').innerHTML=`
     <div class="stat blue"><div class="stat-lbl">Iš viso valandų</div><div class="stat-val">${fmtH(factHrs)}</div><div class="stat-unit">viso objekte</div></div>
     <div class="stat green"><div class="stat-lbl">Norma viso</div><div class="stat-val">${fmtH(normHrs)}</div><div class="stat-unit">normat. val.</div></div>
     <div class="stat orange"><div class="stat-lbl">Kabelis viso</div><div class="stat-val">${kab.toFixed(0)}</div><div class="stat-unit">metrų</div></div>
-    <div class="stat purple"><div class="stat-lbl">Darbo dienų</div><div class="stat-val">${totalDays}</div><div class="stat-unit">dienų</div></div>`;
+    <div class="stat purple"><div class="stat-lbl">Aktyvūs šiandien</div><div class="stat-val">${workers}</div><div class="stat-unit">darbuotojų</div></div>`;
 }
 
 async function renderMgrWorkTable(){
-  // Show all-time totals for the object
-  const {data:logs}=await sb.from('work_logs').select('*').eq('object_id',mgrObjId);
-  const byType={};
-  (logs||[]).forEach(l=>{if(!byType[l.work_type_id])byType[l.work_type_id]={qty:0};byType[l.work_type_id].qty+=l.qty;});
   const el=document.getElementById('mgrWorkTable');
+  el.innerHTML='<tr><td style="padding:20px;color:var(--muted);font-size:13px"><div style="display:flex;align-items:center;gap:8px"><div class="spinner"></div>Kraunama...</div></td></tr>';
+  // Select only needed fields for efficiency
+  const {data:logs, error}=await sb.from('work_logs').select('work_type_id,qty').eq('object_id',mgrObjId);
+  if(error){el.innerHTML='<tr><td style="padding:20px;color:var(--red);font-size:13px">Klaida: '+error.message+'</td></tr>';return;}
+  if(!logs?.length){el.innerHTML='<tr><td style="padding:20px;color:var(--muted);font-size:13px">Nėra duomenų šiam objektui</td></tr>';return;}
+  const byType={};
+  logs.forEach(l=>{
+    if(!byType[l.work_type_id]) byType[l.work_type_id]={qty:0};
+    byType[l.work_type_id].qty+=l.qty;
+  });
   const rows=Object.entries(byType).filter(([,v])=>v.qty>0).sort((a,b)=>b[1].qty-a[1].qty);
-  if(!rows.length){el.innerHTML='<tr><td style="padding:20px;color:var(--muted);font-size:13px">Nėra duomenų</td></tr>';return;}
   el.innerHTML='<thead><tr><th>Darbas</th><th>Kiekis iš viso</th><th>Norma val.</th></tr></thead><tbody>'+
-    rows.map(([tid,v])=>{const wt=workTypes.find(w=>w.id===tid);const nh=(v.qty*(norms[tid]||0)/60);return `<tr><td>${wt?.icon||''} ${wt?.name||tid}</td><td class="mono">${v.qty.toFixed(1)} ${wt?.unit||''}</td><td class="mono">${fmtH(nh)}</td></tr>`;}).join('')+'</tbody>';
+    rows.map(([tid,v])=>{
+      const wt=workTypes.find(w=>w.id===tid);
+      const nh=((v.qty*(norms[tid]||0))/60);
+      return `<tr><td>${wt?.icon||'⚡'} ${wt?.name||tid}</td><td class="mono">${v.qty.toFixed(1)} ${wt?.unit||''}</td><td class="mono">${fmtH(nh)}</td></tr>`;
+    }).join('')+'</tbody>';
 }
 
 async function renderMgrWorkerBreak(){
