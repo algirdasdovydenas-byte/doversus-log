@@ -759,20 +759,20 @@ async function afterLogin(user){
   else initManager();
 }
 
-async function logout(){
-  try { await sb.auth.signOut(); } catch(e){ console.log('signOut error:', e); }
-  // Reset all state
+function logout(){
+  // Reset UI immediately (synchronous)
   currentUser=null; currentProfile=null;
   activeSession=null; activeObjId=null; workStart=null;
   selectedWT=null; selectedColleagues=[];
   mgrObjId=null; mgrSelectedDate=null; mgrAllMode=false;
   supObjId=null; supSelectedDate=null; supAllMode=false;
   stopTimer();
-  // Close any open modals
   document.querySelectorAll('.overlay.open').forEach(m=>m.classList.remove('open'));
   hideAll();
   document.getElementById('topInfo').style.display='none';
   document.getElementById('loginView').classList.add('active');
+  // Sign out in background
+  sb.auth.signOut().catch(e=>console.log('signOut error:',e));
 }
 
 function setupTopbar(){
@@ -1579,24 +1579,26 @@ async function submitLogForWorker(){
 // ═══════════════════════════════════════════════════════════════
 function mgrDate(){ return mgrSelectedDate || todayStr(); }
 
-function onMgrDateChange(){
+async function onMgrDateChange(){
   mgrAllMode = false;
   mgrSelectedDate = document.getElementById('mgrDateFilter').value || todayStr();
   const d = new Date(mgrSelectedDate + 'T12:00:00');
   document.getElementById('mgrDate').textContent = d.toLocaleDateString('lt-LT',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-  // Update button styles
   document.getElementById('mgrAllBtn').style.background = 'var(--panel2)';
   document.getElementById('mgrAllBtn').style.color = 'var(--muted)';
-  Promise.all([renderMgrStats(),renderMgrWorkTable(),renderMgrWorkerBreak(),renderMgrFeed()]);
+  try {
+    await Promise.all([renderMgrStats(),renderMgrWorkTable(),renderMgrWorkerBreak(),renderMgrFeed()]);
+  } catch(e){ console.error('onMgrDateChange error:',e); }
 }
 
-function showAllData(){
+async function showAllData(){
   mgrAllMode = true;
   document.getElementById('mgrDate').textContent = 'Visi objekto duomenys';
-  // Highlight button
   document.getElementById('mgrAllBtn').style.background = 'var(--accent)';
   document.getElementById('mgrAllBtn').style.color = '#fff';
-  Promise.all([renderMgrStats(),renderMgrWorkTable(),renderMgrWorkerBreak(),renderMgrFeed()]);
+  try {
+    await Promise.all([renderMgrStats(),renderMgrWorkTable(),renderMgrWorkerBreak(),renderMgrFeed()]);
+  } catch(e){ console.error('showAllData error:',e); showToast('Klaida kraunant duomenis','err'); }
 }
 
 async function initManager(){
@@ -1628,7 +1630,7 @@ function renderMgrObjTabs(){
 async function selMgrObj(id){mgrObjId=id;renderMgrObjTabs();await Promise.all([renderMgrStats(),renderMgrWorkTable(),renderMgrWorkerBreak(),renderMgrFeed(),renderMgrObjWorkers()]);}
 
 async function renderMgrStats(){
-  let logsQuery = sb.from('work_logs').select('work_type_id,qty,hrs,worker_id,log_date').eq('object_id',mgrObjId);
+  let logsQuery = sb.from('work_logs').select('work_type_id,qty,hrs,worker_id,log_date').eq('object_id',mgrObjId).limit(5000);
   let sessQuery = sb.from('work_sessions').select('duration_hrs,worker_id').eq('object_id',mgrObjId);
   if(!mgrAllMode){
     logsQuery = logsQuery.eq('log_date',mgrDate());
@@ -1650,7 +1652,7 @@ async function renderMgrStats(){
 async function renderMgrWorkTable(){
   const el=document.getElementById('mgrWorkTable');
   el.innerHTML='<tr><td colspan="3" style="padding:16px;color:var(--muted);font-size:13px;text-align:center">Kraunama...</td></tr>';
-  let q = sb.from('work_logs').select('work_type_id,qty').eq('object_id',mgrObjId);
+  let q = sb.from('work_logs').select('work_type_id,qty').eq('object_id',mgrObjId).limit(5000);
   if(!mgrAllMode) q = q.eq('log_date',mgrDate());
   const {data:logs,error}=await q;
   if(error){el.innerHTML=`<tr><td colspan="3" style="padding:16px;color:var(--red);font-size:13px">Klaida: ${error.message}</td></tr>`;return;}
