@@ -454,7 +454,11 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
   <div class="page wide">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
       <div><div style="font-size:20px;font-weight:800;">Vadovo suvestinė</div><div style="font-size:13px;color:var(--muted)" id="mgrDate"></div></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <div style="display:flex;align-items:center;gap:6px;background:var(--panel);border:1.5px solid var(--border);border-radius:8px;padding:5px 10px;">
+          <span style="font-size:11px;font-weight:700;color:var(--muted);">📅 Data:</span>
+          <input type="date" id="mgrDateFilter" style="border:none;background:transparent;font-size:13px;font-weight:600;color:var(--text);outline:none;font-family:'Inter',sans-serif;cursor:pointer;" onchange="onMgrDateChange()">
+        </div>
         <button class="btn btn-secondary btn-sm" onclick="openNorms()">⚙️ Normatyvai</button>
         <button class="btn btn-secondary btn-sm" onclick="openAddUser()">+ Darbuotojas</button>
         <button class="btn btn-primary btn-sm" onclick="openAddObject()">+ Objektas</button>
@@ -688,6 +692,7 @@ let selectedWT = null;
 let selectedColleagues = [];
 let supObjId = null;
 let mgrObjId = null;
+let mgrSelectedDate = null;
 let editingLogId = null;
 let userLat = null, userLng = null;
 let gpsAlertShown = false;
@@ -1523,8 +1528,19 @@ async function submitLogForWorker(){
 // ═══════════════════════════════════════════════════════════════
 // MANAGER VIEW
 // ═══════════════════════════════════════════════════════════════
+function mgrDate(){ return mgrSelectedDate || todayStr(); }
+
+function onMgrDateChange(){
+  mgrSelectedDate = document.getElementById('mgrDateFilter').value || todayStr();
+  const d = new Date(mgrSelectedDate + 'T12:00:00');
+  document.getElementById('mgrDate').textContent = d.toLocaleDateString('lt-LT',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  Promise.all([renderMgrStats(),renderMgrWorkTable(),renderMgrWorkerBreak(),renderMgrFeed()]);
+}
+
 async function initManager(){
   document.getElementById('managerView').classList.add('active');
+  mgrSelectedDate = todayStr();
+  document.getElementById('mgrDateFilter').value = todayStr();
   document.getElementById('mgrDate').textContent=new Date().toLocaleDateString('lt-LT',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   if(allObjects.length) mgrObjId=allObjects[0].id;
   renderMgrObjTabs();
@@ -1549,7 +1565,7 @@ function renderMgrObjTabs(){
 async function selMgrObj(id){mgrObjId=id;renderMgrObjTabs();await Promise.all([renderMgrStats(),renderMgrWorkTable(),renderMgrWorkerBreak(),renderMgrFeed(),renderMgrObjWorkers()]);}
 
 async function renderMgrStats(){
-  const {data:logs}=await sb.from('work_logs').select('*').eq('object_id',mgrObjId).eq('log_date',todayStr());
+  const {data:logs}=await sb.from('work_logs').select('*').eq('object_id',mgrObjId).eq('log_date',mgrDate());
   const factHrs=(logs||[]).reduce((s,l)=>s+l.hrs,0);
   const normHrs=(logs||[]).reduce((s,l)=>s+(l.qty*(norms[l.work_type_id]||0)/60),0);
   const workers=[...new Set((logs||[]).map(l=>l.worker_id))].length;
@@ -1562,7 +1578,7 @@ async function renderMgrStats(){
 }
 
 async function renderMgrWorkTable(){
-  const {data:logs}=await sb.from('work_logs').select('*').eq('object_id',mgrObjId).eq('log_date',todayStr());
+  const {data:logs}=await sb.from('work_logs').select('*').eq('object_id',mgrObjId).eq('log_date',mgrDate());
   const byType={};
   (logs||[]).forEach(l=>{if(!byType[l.work_type_id])byType[l.work_type_id]={qty:0};byType[l.work_type_id].qty+=l.qty;});
   const el=document.getElementById('mgrWorkTable');
@@ -1575,8 +1591,8 @@ async function renderMgrWorkTable(){
 async function renderMgrWorkerBreak(){
   // factHrs from work_sessions (actual time on site), normHrs from work_logs
   const [sessRes, logsRes] = await Promise.all([
-    sb.from('work_sessions').select('worker_id,duration_hrs,started_at,ended_at').eq('object_id',mgrObjId).gte('started_at', todayStr()+'T00:00:00').lte('started_at', todayStr()+'T23:59:59'),
-    sb.from('work_logs').select('*').eq('object_id',mgrObjId).eq('log_date',todayStr())
+    sb.from('work_sessions').select('worker_id,duration_hrs,started_at,ended_at').eq('object_id',mgrObjId).gte('started_at', mgrDate()+'T00:00:00').lte('started_at', mgrDate()+'T23:59:59'),
+    sb.from('work_logs').select('*').eq('object_id',mgrObjId).eq('log_date',mgrDate())
   ]);
   const sessions = sessRes.data||[];
   const logs = logsRes.data||[];
@@ -1617,7 +1633,7 @@ async function renderMgrWorkerBreak(){
 }
 
 async function renderMgrFeed(){
-  const {data:logs}=await sb.from('work_logs').select('*').eq('object_id',mgrObjId).eq('log_date',todayStr()).order('created_at',{ascending:false}).limit(20);
+  const {data:logs}=await sb.from('work_logs').select('*').eq('object_id',mgrObjId).eq('log_date',mgrDate()).order('created_at',{ascending:false}).limit(20);
   const el=document.getElementById('mgrFeed');
   if(!logs?.length){el.innerHTML='<div class="empty">Nėra įrašų</div>';return;}
   el.innerHTML=logs.map(l=>{
