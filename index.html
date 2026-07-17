@@ -429,6 +429,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
   <div class="page wide">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
       <div><div style="font-size:20px;font-weight:800;">Mano objektai</div><div style="font-size:13px;color:var(--muted)" id="supDate"></div></div>
+      <div style="display:flex;align-items:center;gap:6px;background:var(--panel);border:1.5px solid var(--border);border-radius:8px;padding:5px 10px;">
+        <span style="font-size:11px;font-weight:700;color:var(--muted);">📅 Data:</span>
+        <input type="date" id="supDateFilter" style="border:none;background:transparent;font-size:13px;font-weight:600;color:var(--text);outline:none;font-family:'Inter',sans-serif;cursor:pointer;" onchange="onSupDateChange()">
+      </div>
     </div>
     <div class="tabs" id="supTabs"></div>
     <div class="stats-grid" id="supStats"></div>
@@ -691,6 +695,7 @@ let workStart = null;
 let selectedWT = null;
 let selectedColleagues = [];
 let supObjId = null;
+let supSelectedDate = null;
 let mgrObjId = null;
 let mgrSelectedDate = null;
 let editingLogId = null;
@@ -1340,8 +1345,19 @@ function sendPushNotification(title, body){
 // ═══════════════════════════════════════════════════════════════
 // SUPERVISOR VIEW
 // ═══════════════════════════════════════════════════════════════
+function supDate(){ return supSelectedDate || todayStr(); }
+
+function onSupDateChange(){
+  supSelectedDate = document.getElementById('supDateFilter').value || todayStr();
+  const d = new Date(supSelectedDate + 'T12:00:00');
+  document.getElementById('supDate').textContent = d.toLocaleDateString('lt-LT',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  renderSupContent();
+}
+
 async function initSupervisor(){
   document.getElementById('supervisorView').classList.add('active');
+  supSelectedDate = todayStr();
+  document.getElementById('supDateFilter').value = todayStr();
   document.getElementById('supDate').textContent=new Date().toLocaleDateString('lt-LT',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   const {data:os}=await sb.from('object_supervisors').select('object_id').eq('supervisor_id',currentProfile.id);
   const ids=(os||[]).map(r=>r.object_id);
@@ -1361,7 +1377,7 @@ async function renderSupContent(){
 }
 
 async function renderSupStats(){
-  const {data:logs}=await sb.from('work_logs').select('*').eq('object_id',supObjId).eq('log_date',todayStr());
+  const {data:logs}=await sb.from('work_logs').select('*').eq('object_id',supObjId).eq('log_date',supDate());
   const hrs=(logs||[]).reduce((s,l)=>s+l.hrs,0);
   const kab=(logs||[]).filter(l=>l.work_type_id==='kabelis').reduce((s,l)=>s+l.qty,0);
   const workers=[...new Set((logs||[]).map(l=>l.worker_id))].length;
@@ -1374,7 +1390,7 @@ async function renderSupStats(){
 
 async function renderMatList(){
   const {data:mats}=await sb.from('materials').select('*').eq('object_id',supObjId).order('created_at',{ascending:false});
-  const {data:logs}=await sb.from('work_logs').select('work_type_id,qty').eq('object_id',supObjId).eq('log_date',todayStr());
+  const {data:logs}=await sb.from('work_logs').select('work_type_id,qty').eq('object_id',supObjId).eq('log_date',supDate());
   const el=document.getElementById('matList');
   if(!mats?.length){el.innerHTML='<div class="empty">Medžiagų nėra</div>';return;}
   const byType={};
@@ -1398,7 +1414,7 @@ async function renderSupWorkers(){
   const {data:ow}=await sb.from('object_workers').select('worker_id').eq('object_id',supObjId);
   const ids=(ow||[]).map(r=>r.worker_id);
   const workers=allProfiles.filter(p=>ids.includes(p.id));
-  const {data:logs}=await sb.from('work_logs').select('worker_id,hrs').eq('object_id',supObjId).eq('log_date',todayStr());
+  const {data:logs}=await sb.from('work_logs').select('worker_id,hrs').eq('object_id',supObjId).eq('log_date',supDate());
   const el=document.getElementById('supWorkers');
   if(!workers.length){el.innerHTML='<div class="empty">Nėra priskirtų</div>';return;}
   el.innerHTML=workers.map(u=>{
@@ -1412,7 +1428,7 @@ async function renderSupWorkers(){
 }
 
 async function renderSupTable(){
-  const {data:logs}=await sb.from('work_logs').select('*').eq('object_id',supObjId).eq('log_date',todayStr()).order('created_at',{ascending:false});
+  const {data:logs}=await sb.from('work_logs').select('*').eq('object_id',supObjId).eq('log_date',supDate()).order('created_at',{ascending:false});
   const {data:mats}=await sb.from('materials').select('work_type_id,qty').eq('object_id',supObjId);
   const el=document.getElementById('supTable');
   if(!logs?.length){el.innerHTML='<tr><td colspan="6" style="padding:20px;color:var(--muted);font-size:13px">Nėra įrašų</td></tr>';return;}
@@ -1565,27 +1581,32 @@ function renderMgrObjTabs(){
 async function selMgrObj(id){mgrObjId=id;renderMgrObjTabs();await Promise.all([renderMgrStats(),renderMgrWorkTable(),renderMgrWorkerBreak(),renderMgrFeed(),renderMgrObjWorkers()]);}
 
 async function renderMgrStats(){
-  const {data:logs}=await sb.from('work_logs').select('*').eq('object_id',mgrObjId).eq('log_date',mgrDate());
-  const factHrs=(logs||[]).reduce((s,l)=>s+l.hrs,0);
-  const normHrs=(logs||[]).reduce((s,l)=>s+(l.qty*(norms[l.work_type_id]||0)/60),0);
-  const workers=[...new Set((logs||[]).map(l=>l.worker_id))].length;
-  const kab=(logs||[]).filter(l=>l.work_type_id==='kabelis').reduce((s,l)=>s+l.qty,0);
+  // Always show totals for entire object lifetime
+  const {data:allLogs}=await sb.from('work_logs').select('*').eq('object_id',mgrObjId);
+  // Day logs for "active workers today"
+  const {data:dayLogs}=await sb.from('work_logs').select('worker_id').eq('object_id',mgrObjId).eq('log_date',mgrDate());
+  const factHrs=(allLogs||[]).reduce((s,l)=>s+l.hrs,0);
+  const normHrs=(allLogs||[]).reduce((s,l)=>s+(l.qty*(norms[l.work_type_id]||0)/60),0);
+  const workers=[...new Set((dayLogs||[]).map(l=>l.worker_id))].length;
+  const kab=(allLogs||[]).filter(l=>l.work_type_id.startsWith('kab_')).reduce((s,l)=>s+l.qty,0);
+  const totalDays=[...new Set((allLogs||[]).map(l=>l.log_date))].length;
   document.getElementById('mgrStats').innerHTML=`
-    <div class="stat blue"><div class="stat-lbl">Faktas</div><div class="stat-val">${fmtH(factHrs)}</div><div class="stat-unit">faktinės val.</div></div>
-    <div class="stat green"><div class="stat-lbl">Norma</div><div class="stat-val">${fmtH(normHrs)}</div><div class="stat-unit">normat. val.</div></div>
-    <div class="stat orange"><div class="stat-lbl">Kabelis</div><div class="stat-val">${kab.toFixed(0)}</div><div class="stat-unit">metrų</div></div>
-    <div class="stat purple"><div class="stat-lbl">Darbuotojai</div><div class="stat-val">${workers}</div><div class="stat-unit">aktyvūs</div></div>`;
+    <div class="stat blue"><div class="stat-lbl">Iš viso valandų</div><div class="stat-val">${fmtH(factHrs)}</div><div class="stat-unit">viso objekte</div></div>
+    <div class="stat green"><div class="stat-lbl">Norma viso</div><div class="stat-val">${fmtH(normHrs)}</div><div class="stat-unit">normat. val.</div></div>
+    <div class="stat orange"><div class="stat-lbl">Kabelis viso</div><div class="stat-val">${kab.toFixed(0)}</div><div class="stat-unit">metrų</div></div>
+    <div class="stat purple"><div class="stat-lbl">Darbo dienų</div><div class="stat-val">${totalDays}</div><div class="stat-unit">dienų</div></div>`;
 }
 
 async function renderMgrWorkTable(){
-  const {data:logs}=await sb.from('work_logs').select('*').eq('object_id',mgrObjId).eq('log_date',mgrDate());
+  // Show all-time totals for the object
+  const {data:logs}=await sb.from('work_logs').select('*').eq('object_id',mgrObjId);
   const byType={};
   (logs||[]).forEach(l=>{if(!byType[l.work_type_id])byType[l.work_type_id]={qty:0};byType[l.work_type_id].qty+=l.qty;});
   const el=document.getElementById('mgrWorkTable');
-  const rows=Object.entries(byType).filter(([,v])=>v.qty>0);
+  const rows=Object.entries(byType).filter(([,v])=>v.qty>0).sort((a,b)=>b[1].qty-a[1].qty);
   if(!rows.length){el.innerHTML='<tr><td style="padding:20px;color:var(--muted);font-size:13px">Nėra duomenų</td></tr>';return;}
-  el.innerHTML='<thead><tr><th>Darbas</th><th>Kiekis</th><th>Norma val.</th></tr></thead><tbody>'+
-    rows.map(([tid,v])=>{const wt=workTypes.find(w=>w.id===tid);const nh=(v.qty*(norms[tid]||0)/60);return `<tr><td>${wt?.icon} ${wt?.name}</td><td class="mono">${v.qty.toFixed(1)} ${wt?.unit}</td><td class="mono">${fmtH(nh)}</td></tr>`;}).join('')+'</tbody>';
+  el.innerHTML='<thead><tr><th>Darbas</th><th>Kiekis iš viso</th><th>Norma val.</th></tr></thead><tbody>'+
+    rows.map(([tid,v])=>{const wt=workTypes.find(w=>w.id===tid);const nh=(v.qty*(norms[tid]||0)/60);return `<tr><td>${wt?.icon||''} ${wt?.name||tid}</td><td class="mono">${v.qty.toFixed(1)} ${wt?.unit||''}</td><td class="mono">${fmtH(nh)}</td></tr>`;}).join('')+'</tbody>';
 }
 
 async function renderMgrWorkerBreak(){
