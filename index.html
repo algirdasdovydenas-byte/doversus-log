@@ -459,9 +459,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
       <div><div style="font-size:20px;font-weight:800;">Vadovo suvestinė</div><div style="font-size:13px;color:var(--muted)" id="mgrDate"></div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-        <div style="display:flex;align-items:center;gap:6px;background:var(--panel);border:1.5px solid var(--border);border-radius:8px;padding:5px 10px;">
-          <span style="font-size:11px;font-weight:700;color:var(--muted);">📅 Data:</span>
+        <div style="display:flex;align-items:center;gap:4px;background:var(--panel);border:1.5px solid var(--border);border-radius:8px;padding:4px 6px 4px 10px;">
+          <span style="font-size:11px;font-weight:700;color:var(--muted);">📅</span>
           <input type="date" id="mgrDateFilter" style="border:none;background:transparent;font-size:13px;font-weight:600;color:var(--text);outline:none;font-family:'Inter',sans-serif;cursor:pointer;" onchange="onMgrDateChange()">
+          <button id="mgrAllBtn" onclick="showAllData()" style="background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;">Visi duomenys</button>
         </div>
         <button class="btn btn-secondary btn-sm" onclick="openNorms()">⚙️ Normatyvai</button>
         <button class="btn btn-secondary btn-sm" onclick="openAddUser()">+ Darbuotojas</button>
@@ -698,6 +699,7 @@ let supObjId = null;
 let supSelectedDate = null;
 let mgrObjId = null;
 let mgrSelectedDate = null;
+let mgrAllMode = false;
 let editingLogId = null;
 let userLat = null, userLng = null;
 let gpsAlertShown = false;
@@ -1547,15 +1549,29 @@ async function submitLogForWorker(){
 function mgrDate(){ return mgrSelectedDate || todayStr(); }
 
 function onMgrDateChange(){
+  mgrAllMode = false;
   mgrSelectedDate = document.getElementById('mgrDateFilter').value || todayStr();
   const d = new Date(mgrSelectedDate + 'T12:00:00');
   document.getElementById('mgrDate').textContent = d.toLocaleDateString('lt-LT',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  // Update button styles
+  document.getElementById('mgrAllBtn').style.background = 'var(--panel2)';
+  document.getElementById('mgrAllBtn').style.color = 'var(--muted)';
+  Promise.all([renderMgrStats(),renderMgrWorkTable(),renderMgrWorkerBreak(),renderMgrFeed()]);
+}
+
+function showAllData(){
+  mgrAllMode = true;
+  document.getElementById('mgrDate').textContent = 'Visi objekto duomenys';
+  // Highlight button
+  document.getElementById('mgrAllBtn').style.background = 'var(--accent)';
+  document.getElementById('mgrAllBtn').style.color = '#fff';
   Promise.all([renderMgrStats(),renderMgrWorkTable(),renderMgrWorkerBreak(),renderMgrFeed()]);
 }
 
 async function initManager(){
   document.getElementById('managerView').classList.add('active');
   mgrSelectedDate = todayStr();
+  mgrAllMode = false;
   document.getElementById('mgrDateFilter').value = todayStr();
   document.getElementById('mgrDate').textContent=new Date().toLocaleDateString('lt-LT',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   if(allObjects.length) mgrObjId=allObjects[0].id;
@@ -1581,38 +1597,41 @@ function renderMgrObjTabs(){
 async function selMgrObj(id){mgrObjId=id;renderMgrObjTabs();await Promise.all([renderMgrStats(),renderMgrWorkTable(),renderMgrWorkerBreak(),renderMgrFeed(),renderMgrObjWorkers()]);}
 
 async function renderMgrStats(){
-  // Fetch only needed fields for totals
-  const [{data:allLogs},{data:dayLogs},{data:sessions}] = await Promise.all([
-    sb.from('work_logs').select('work_type_id,qty,hrs').eq('object_id',mgrObjId),
-    sb.from('work_logs').select('worker_id').eq('object_id',mgrObjId).eq('log_date',mgrDate()),
-    sb.from('work_sessions').select('duration_hrs').eq('object_id',mgrObjId)
-  ]);
+  let logsQuery = sb.from('work_logs').select('work_type_id,qty,hrs,worker_id,log_date').eq('object_id',mgrObjId);
+  let sessQuery = sb.from('work_sessions').select('duration_hrs,worker_id').eq('object_id',mgrObjId);
+  if(!mgrAllMode){
+    logsQuery = logsQuery.eq('log_date',mgrDate());
+    sessQuery = sessQuery.gte('started_at',mgrDate()+'T00:00:00').lte('started_at',mgrDate()+'T23:59:59');
+  }
+  const [{data:logs},{data:sessions}] = await Promise.all([logsQuery, sessQuery]);
   const factHrs=(sessions||[]).reduce((s,sess)=>s+(sess.duration_hrs||0),0);
-  const normHrs=(allLogs||[]).reduce((s,l)=>s+(l.qty*(norms[l.work_type_id]||0)/60),0);
-  const workers=[...new Set((dayLogs||[]).map(l=>l.worker_id))].length;
-  const kab=(allLogs||[]).filter(l=>l.work_type_id.startsWith('kab_')).reduce((s,l)=>s+l.qty,0);
-  const totalEntries=(allLogs||[]).length;
+  const normHrs=(logs||[]).reduce((s,l)=>s+(l.qty*(norms[l.work_type_id]||0)/60),0);
+  const workers=[...new Set((logs||[]).map(l=>l.worker_id))].length;
+  const kab=(logs||[]).filter(l=>l.work_type_id.startsWith('kab_')).reduce((s,l)=>s+l.qty,0);
+  const lbl = mgrAllMode ? 'viso objekte' : 'šią dieną';
   document.getElementById('mgrStats').innerHTML=`
-    <div class="stat blue"><div class="stat-lbl">Iš viso valandų</div><div class="stat-val">${fmtH(factHrs)}</div><div class="stat-unit">viso objekte</div></div>
-    <div class="stat green"><div class="stat-lbl">Norma viso</div><div class="stat-val">${fmtH(normHrs)}</div><div class="stat-unit">normat. val.</div></div>
-    <div class="stat orange"><div class="stat-lbl">Kabelis viso</div><div class="stat-val">${kab.toFixed(0)}</div><div class="stat-unit">metrų</div></div>
-    <div class="stat purple"><div class="stat-lbl">Aktyvūs šiandien</div><div class="stat-val">${workers}</div><div class="stat-unit">darbuotojų</div></div>`;
+    <div class="stat blue"><div class="stat-lbl">Valandų</div><div class="stat-val">${fmtH(factHrs)}</div><div class="stat-unit">${lbl}</div></div>
+    <div class="stat green"><div class="stat-lbl">Norma</div><div class="stat-val">${fmtH(normHrs)}</div><div class="stat-unit">${lbl}</div></div>
+    <div class="stat orange"><div class="stat-lbl">Kabelis</div><div class="stat-val">${kab.toFixed(0)}</div><div class="stat-unit">metrų ${lbl}</div></div>
+    <div class="stat purple"><div class="stat-lbl">Darbuotojai</div><div class="stat-val">${workers}</div><div class="stat-unit">${lbl}</div></div>`;
 }
 
 async function renderMgrWorkTable(){
   const el=document.getElementById('mgrWorkTable');
-  el.innerHTML='<tr><td style="padding:20px;color:var(--muted);font-size:13px"><div style="display:flex;align-items:center;gap:8px"><div class="spinner"></div>Kraunama...</div></td></tr>';
-  // Select only needed fields for efficiency
-  const {data:logs, error}=await sb.from('work_logs').select('work_type_id,qty').eq('object_id',mgrObjId);
-  if(error){el.innerHTML='<tr><td style="padding:20px;color:var(--red);font-size:13px">Klaida: '+error.message+'</td></tr>';return;}
-  if(!logs?.length){el.innerHTML='<tr><td style="padding:20px;color:var(--muted);font-size:13px">Nėra duomenų šiam objektui</td></tr>';return;}
+  el.innerHTML='<tr><td colspan="3" style="padding:16px;color:var(--muted);font-size:13px;text-align:center">Kraunama...</td></tr>';
+  let q = sb.from('work_logs').select('work_type_id,qty').eq('object_id',mgrObjId);
+  if(!mgrAllMode) q = q.eq('log_date',mgrDate());
+  const {data:logs,error}=await q;
+  if(error){el.innerHTML=`<tr><td colspan="3" style="padding:16px;color:var(--red);font-size:13px">Klaida: ${error.message}</td></tr>`;return;}
+  if(!logs?.length){el.innerHTML='<tr><td colspan="3" style="padding:16px;color:var(--muted);font-size:13px;text-align:center">Nėra duomenų</td></tr>';return;}
   const byType={};
   logs.forEach(l=>{
     if(!byType[l.work_type_id]) byType[l.work_type_id]={qty:0};
     byType[l.work_type_id].qty+=l.qty;
   });
   const rows=Object.entries(byType).filter(([,v])=>v.qty>0).sort((a,b)=>b[1].qty-a[1].qty);
-  el.innerHTML='<thead><tr><th>Darbas</th><th>Kiekis iš viso</th><th>Norma val.</th></tr></thead><tbody>'+
+  const hdr = mgrAllMode ? 'Kiekis iš viso' : 'Kiekis';
+  el.innerHTML=`<thead><tr><th>Darbas</th><th>${hdr}</th><th>Norma val.</th></tr></thead><tbody>`+
     rows.map(([tid,v])=>{
       const wt=workTypes.find(w=>w.id===tid);
       const nh=((v.qty*(norms[tid]||0))/60);
@@ -1665,7 +1684,9 @@ async function renderMgrWorkerBreak(){
 }
 
 async function renderMgrFeed(){
-  const {data:logs}=await sb.from('work_logs').select('*').eq('object_id',mgrObjId).eq('log_date',mgrDate()).order('created_at',{ascending:false}).limit(20);
+  let feedQ = sb.from('work_logs').select('*').eq('object_id',mgrObjId).order('created_at',{ascending:false}).limit(30);
+  if(!mgrAllMode) feedQ = feedQ.eq('log_date',mgrDate());
+  const {data:logs}=await feedQ;
   const el=document.getElementById('mgrFeed');
   if(!logs?.length){el.innerHTML='<div class="empty">Nėra įrašų</div>';return;}
   el.innerHTML=logs.map(l=>{
