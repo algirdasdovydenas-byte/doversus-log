@@ -1140,8 +1140,8 @@ async function startWork(){
   }
 }
 
-async function stopWork(){
-  if(!confirm('Baigti darbo dienos laikmatį?'))return;
+async function stopWork(skipConfirm=false){
+  if(!skipConfirm && !confirm('Baigti darbo dienos laikmatį?'))return;
   const ended=new Date();
   const hrs=parseFloat(((ended-workStart)/3600000).toFixed(2));
   await sb.from('work_sessions').update({ended_at:ended.toISOString(),duration_hrs:hrs}).eq('id',activeSession.id);
@@ -1203,9 +1203,11 @@ function showAlert(type, icon, text, btnLabel, callback){
 function hideAlert(){
   document.getElementById('alertBanner').classList.remove('show');
 }
-function alertAction(){
+async function alertAction(){
+  const cb = alertCallback;
+  alertCallback = null;
   hideAlert();
-  if(alertCallback) alertCallback();
+  if(cb) await cb();
 }
 
 async function submitLog(){
@@ -1330,7 +1332,7 @@ function updateGPS(){
         'warn','📍',
         `Esate ${(d/1000).toFixed(1)}km nuo objekto. Ar baigėte darbą?`,
         'Baigti darbą',
-        ()=>stopWork()
+        ()=>stopWork(true)
       );
       // Try push notification
       sendPushNotification('📍 DoversusLog', `Esate ${(d/1000).toFixed(1)}km nuo objekto. Ar baigėte darbą?`);
